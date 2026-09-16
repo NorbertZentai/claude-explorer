@@ -5,7 +5,7 @@ import { assetKey } from '../analysis/recent';
 import { collect, Collection } from '../discovery';
 import { samePath } from '../discovery/scopes';
 import { Asset, ASSET_LABELS, ASSET_ORDER, AssetKind, ScopeKind } from '../discovery/types';
-import { AccountNode, AssetInsight, AssetNode, GroupNode, MessageNode, Node } from './nodes';
+import { AccountNode, AssetInsight, AssetNode, countAssets, GroupNode, MessageNode, Node } from './nodes';
 import { isEditingAllowed, KIND_GROUP_ICONS, toneIcon } from './style';
 import { CREATABLE_KINDS } from '../edit/templates';
 import { surfaceDirs } from '../discovery/surfaces';
@@ -29,6 +29,10 @@ export interface StateStore {
 const KEY_GROUPING = 'claudeExplorer.grouping';
 const KEY_FILTER = 'claudeExplorer.filter';
 const KEY_ATTACHED = 'claudeExplorer.attachedPaths';
+const KEY_HIDDEN_EMPTIES = 'claudeExplorer.hiddenEmpties';
+
+/** The headings whose empty rows (placeholders, empty projects, "no policy") can be hidden. */
+const EMPTIES_SCOPES = new Set<ScopeKind>(['system', 'user', 'workspace']);
 
 // Highest precedence first: system policy overrides everything below it.
 const SCOPE_ORDER: ScopeKind[] = ['system', 'user', 'plugin', 'workspace'];
@@ -111,7 +115,8 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
         workspaceFolders: (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath),
         extraProjectPaths: [...fromSettings, ...this.attachedPaths()],
         showPluginProvided: config.get<boolean>('showPluginProvided', true),
-        showPlaceholders: config.get<boolean>('showUnusedSurfaces', true),
+        // Always collected; whether they show is decided per heading at render time.
+        showPlaceholders: true,
       });
 
       const signature = fingerprint(next);
@@ -178,6 +183,27 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
       this.attachedPaths().filter((p) => !samePath(p, folder)),
     );
     this.refresh();
+  }
+
+  /** Are the empty rows under this heading hidden? Unset follows showUnusedSurfaces. */
+  isEmptiesHidden(kind: ScopeKind): boolean {
+    const saved = this.state.get<Partial<Record<ScopeKind, boolean>>>(KEY_HIDDEN_EMPTIES, {})[kind];
+    if (typeof saved === 'boolean') {
+      return saved;
+    }
+    return !vscode.workspace.getConfiguration('claudeExplorer').get<boolean>('showUnusedSurfaces', true);
+  }
+
+  setEmptiesHidden(kind: ScopeKind, hidden: boolean): void {
+    const saved = this.state.get<Partial<Record<ScopeKind, boolean>>>(KEY_HIDDEN_EMPTIES, {});
+    this.state.update(KEY_HIDDEN_EMPTIES, { ...saved, [kind]: hidden });
+    this.rebuild();
+  }
+
+  /** Forget per-heading choices, so a changed showUnusedSurfaces applies everywhere. */
+  resetEmptiesHidden(): void {
+    this.state.update(KEY_HIDDEN_EMPTIES, {});
+    this.rebuild();
   }
 
   setGrouping(grouping: Grouping): void {
@@ -261,7 +287,9 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
   }
 
   private rebuild(): void {
-    const visible = this.collection.assets.filter((a) => this.matches(a));
+    const visible = this.collection.assets.filter(
+      (a) => this.matches(a) && !(a.placeholder && this.isEmptiesHidden(a.scope.kind)),
+    );
     const groups = this.grouping === 'scope' ? this.byScope(visible) : this.byType(visible);
     // The account row is status, not content: never filtered away, never a group.
     this.roots = [new AccountNode(this.collection.account), ...groups];
@@ -322,6 +350,11 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
 
     for (const kind of SCOPE_ORDER) {
       const inScope = assets.filter((a) => a.scope.kind === kind);
+      const hidden = EMPTIES_SCOPES.has(kind) && this.isEmptiesHidden(kind);
+      // Placeholders were already filtered out of `assets`; count them for the heading.
+      let hiddenCount = hidden
+        ? this.collection.assets.filter((a) => a.placeholder && a.scope.kind === kind && this.matches(a)).length
+        : 0;
       const heading = (children: Node[]): GroupNode => {
         const node = new GroupNode(SCOPE_HEADINGS[kind], children, SCOPE_ICONS[kind], 0, undefined, {
           type: 'scope',
@@ -329,29 +362,44 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
         });
         node.reportTarget = { kind };
         node.contextValue = 'group exportable';
+        if (hiddenCount > 0) {
+          node.description = `${countAssets(children)} · ${hiddenCount} empty hidden`;
+        }
+        return node;
+      };
+      /** The eye toggle's state, added to a heading's flags. */
+      const withEmpties = (node: GroupNode): GroupNode => {
+        if (EMPTIES_SCOPES.has(kind)) {
+          node.emptiesScope = kind;
+          node.contextValue = `${node.contextValue} ${hidden ? 'emptiesHidden' : 'emptiesShown'}`;
+        }
         return node;
       };
 
       // Workspace is always rendered even when empty, because it carries the "attach a
       // folder" action -- an action you cannot reach is not an action. System is always
       // rendered because "checked, nothing set" and "never looked" are different answers.
-      if (inScope.length === 0 && kind !== 'workspace' && kind !== 'system') {
+      if (inScope.length === 0 && kind !== 'workspace' && kind !== 'system' && !(kind === 'user' && hidden)) {
         continue;
       }
 
       if (kind === 'system') {
-        const children: Node[] =
-          inScope.length > 0
-            ? this.typeGroups(inScope, false, 1)
-            : [new MessageNode('No administrator or organization policy on this machine', 'check')];
-        out.push(heading(children));
+        let children: Node[] = this.typeGroups(inScope, false, 1);
+        if (inScope.length === 0) {
+          if (hidden) {
+            hiddenCount++;
+          } else {
+            children = [new MessageNode('No administrator or organization policy on this machine', 'check')];
+          }
+        }
+        out.push(withEmpties(heading(children)));
         continue;
       }
 
       if (kind === 'user') {
         const user = heading(this.typeGroups(inScope, false, 1));
         user.contextValue = 'group exportable userScope';
-        out.push(user);
+        out.push(withEmpties(user));
         continue;
       }
 
@@ -360,10 +408,10 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
       // Plugins keep the asset-driven grouping -- a plugin with nothing in it is noise.
       const children: Node[] =
         kind === 'workspace'
-          ? this.workspaceChildren(inScope)
+          ? this.workspaceChildren(inScope, hidden, (n) => (hiddenCount += n))
           : this.pluginChildren(inScope);
 
-      if (kind === 'workspace' && children.length === 0) {
+      if (kind === 'workspace' && children.length === 0 && hiddenCount === 0) {
         children.push(
           new MessageNode(
             vscode.workspace.workspaceFolders?.length
@@ -378,12 +426,12 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
       if (kind === 'workspace') {
         root.contextValue = 'workspaceGroup exportable';
       }
-      out.push(root);
+      out.push(withEmpties(root));
     }
     return out;
   }
 
-  private workspaceChildren(inScope: readonly Asset[]): Node[] {
+  private workspaceChildren(inScope: readonly Asset[], hideEmpty = false, onHidden: (n: number) => void = () => undefined): Node[] {
     const scopes = this.collection.scopes
       .filter((s) => s.kind === 'workspace')
       .slice()
@@ -395,6 +443,12 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
       const list = inScope.filter((a) => a.scope.root === scope.root);
       // While filtering, an empty project is just noise -- the user is hunting something.
       if (list.length === 0 && this.filterText !== '') {
+        continue;
+      }
+      const real = list.filter((a) => !a.placeholder).length;
+      // A project with nothing configured is an empty row the heading's eye can hide.
+      if (real === 0 && hideEmpty) {
+        onHidden(1);
         continue;
       }
 
@@ -410,14 +464,14 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
       node.reportTarget = { kind: 'workspace', root: scope.root };
 
       const tags: string[] = [];
-      if (list.length === 0) {
+      if (real === 0) {
         tags.push(scope.hasConfigDir ? 'no assets' : 'no .claude yet');
         node.iconPath = toneIcon('folder', { type: 'muted' });
       }
       if (scope.attached) {
         tags.push('attached');
       }
-      node.description = [list.length > 0 ? String(list.length) : '', ...tags]
+      node.description = [real > 0 ? String(real) : '', ...tags]
         .filter((t) => t !== '')
         .join(' · ');
       node.tooltip = scope.root;

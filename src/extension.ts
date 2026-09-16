@@ -89,6 +89,16 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
 
     vscode.commands.registerCommand('claudeExplorer.groupByType', () => setGrouping('type')),
+    vscode.commands.registerCommand('claudeExplorer.hideEmptyItems', (node?: GroupNode) => {
+      if (node?.emptiesScope) {
+        provider.setEmptiesHidden(node.emptiesScope, true);
+      }
+    }),
+    vscode.commands.registerCommand('claudeExplorer.showEmptyItems', (node?: GroupNode) => {
+      if (node?.emptiesScope) {
+        provider.setEmptiesHidden(node.emptiesScope, false);
+      }
+    }),
     vscode.commands.registerCommand('claudeExplorer.groupByScope', () => setGrouping('scope')),
 
     vscode.commands.registerCommand('claudeExplorer.openItem', async (node?: AssetNode) => {
@@ -234,9 +244,15 @@ ${uri.path}`;
 
     vscode.commands.registerCommand(
       'claudeExplorer.showGuide',
-      async (target?: AssetKind | GroupNode) => {
+      async (target?: AssetKind | GroupNode | AssetNode) => {
         const kind =
-          typeof target === 'string' ? target : target instanceof GroupNode ? target.assetKind : undefined;
+          typeof target === 'string'
+            ? target
+            : target instanceof GroupNode
+              ? target.assetKind
+              : target instanceof AssetNode
+                ? target.asset.kind
+                : undefined;
         if (!kind || !GUIDES[kind]) {
           return;
         }
@@ -250,20 +266,6 @@ ${uri.path}`;
         } catch {
           await vscode.window.showTextDocument(doc, { preview: true });
         }
-      },
-    ),
-
-    vscode.commands.registerCommand(
-      'claudeExplorer.copyGuidePrompt',
-      async (target?: AssetKind | GroupNode) => {
-        const kind =
-          typeof target === 'string' ? target : target instanceof GroupNode ? target.assetKind : undefined;
-        const guide = kind ? GUIDES[kind] : undefined;
-        if (!guide) {
-          return;
-        }
-        await vscode.env.clipboard.writeText(guide.prompt);
-        void vscode.window.setStatusBarMessage(`Copied the ${guide.title} setup prompt`, 3000);
       },
     ),
   );
@@ -285,6 +287,10 @@ ${uri.path}`;
         // the rebuild; icons are baked into the rows and need one.
         decorations.refresh();
         provider.restyle();
+      }
+      if (e.affectsConfiguration('claudeExplorer.showUnusedSurfaces')) {
+        // The setting is the default for every heading's eye toggle: apply it everywhere.
+        provider.resetEmptiesHidden();
       }
       if (e.affectsConfiguration('claudeExplorer')) {
         provider.refresh();

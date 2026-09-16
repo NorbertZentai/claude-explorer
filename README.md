@@ -136,8 +136,19 @@ Click the icon in the activity bar.
   `when_to_use`), its estimated token cost at startup and when used, the tools and MCP servers it
   needs, its enabled state or `skillOverrides` visibility, when the file last changed, why it is
   overridden or broken, and its full path.
-- **The book icon** on any group opens a guide: what that surface is, where it lives, when it earns
-  its place, and a **paste-ready prompt** for setting one up. Right-click for *Copy Setup Prompt*.
+- **The book icon** on any group opens a guide: what that surface is, where it lives, when to use
+  it and when not, getting-started steps, a real example file, the commands and settings around it,
+  pitfalls, a troubleshooting table, and links to download or browse more (the plugin catalog, MCP
+  servers, language servers, example skills). Each guide ends with two to four setup prompts.
+- **Setup Prompt…** (right-click a group or a greyed row → *Ask Claude Code*) picks one of those
+  prompts, asks for its blanks (a name, a glob, a formatter command…), and copies the filled prompt or
+  sends it to a new Claude Code session. Every prompt the extension writes has the same shape: the
+  goal, what Claude should inspect first, the documented rules to follow, limits, how to verify the
+  result, and a request to show the change before writing.
+- **The eye icon** on the System, User and Workspace headings hides or shows that heading's empty
+  rows: greyed "none" rows, projects without any configuration, and the "no policy" row. Each heading
+  remembers its own state per workspace, and shows how many empty rows are hidden. The default comes
+  from `claudeExplorer.showUnusedSurfaces`.
 - **The `+` on Workspace** attaches another project folder, remembered per workspace; the **×** on an
   attached folder detaches it.
 - **Group by scope or by type**, filter, and expand one level at a time. **Show Problems** in the
@@ -168,14 +179,17 @@ Click the icon in the activity bar.
 | View title bar | Open Overview · Filter… / Clear Filter · Group by Type / Group by Scope · Refresh · Collapse All · Clean Up Configuration… |
 | Icons on a type group | New… (`+`, where you can create) · What is this for? (book) · Open Folder |
 | Icons on other rows | Run (▶ skills, commands) · Attach Folder (`+` on Workspace) · Detach Folder (× on an attached folder) · Set Up Claude Code Here… (project without `.claude`) · Add Permission Rule… (`permissions` row) · Change Setting… (model, output style, permissions) · Test MCP Server · Enable / Disable (plugins, project MCP servers, skills, commands, CLAUDE.md files, rules) |
-| Right-click an item | Run in Claude Code · Assign Keybinding… · Open Source File · Reveal in File Explorer · Show in Overview · Compare with Overriding Item · Copy Path · Copy Invocation · Copy as @-Reference · Copy Prompt… · Copy claude mcp add Command · Enable / Disable · Set Visibility… · Why Isn't This in Effect? · Check Skill · Test MCP Server · Harden Security with Claude Code… · Edit Description… · Change Setting… · Copy to… · Rename… · Move to Trash |
-| Right-click a type group | What is this for? · Copy Setup Prompt · Show Effective Settings (Settings, Policy) · Show Security Review (Settings, Policy, Hooks, MCP) · Show Hook Timeline (Hooks) · Show Context Budget (Memory, Skills, Rules) · Open Folder · New… · Draft a Skill with Claude Code… (Skills) · Add Permission Rule… (Settings) |
-| Right-click a greyed "none" row | What is this for? · Copy Setup Prompt · New… |
-| Right-click a scope heading, project or plugin | Export Report · Set Up Claude Code Here… · Set Up with Claude Code… (projects) · Personalise Claude Code… (User) · Detach Folder |
+| Right-click an item | Run in Claude Code · Open Source File · Reveal in File Explorer · Show in Overview · **Copy ›** Path, Invocation, @-Reference, claude mcp add Command · **Edit ›** Enable / Disable, Set Visibility…, Edit Description…, Change Setting…, Add Permission Rule…, Assign Keybinding…, Copy to…, Rename… · **Diagnose ›** Why Isn't This in Effect?, Compare with Overriding Item, Check Skill, Test MCP Server, Show Security Review · **Ask Claude Code ›** Copy Prompt…, Harden Security with Claude Code… · Move to Trash |
+| Right-click a type group | What is this for? · Show Effective Settings (Settings, Policy) · Show Security Review (Settings, Policy, Hooks, MCP) · Show Hook Timeline (Hooks) · Show Context Budget (Memory, Skills, Rules) · Open Folder · New… · **Edit ›** Add Permission Rule… (Settings) · **Ask Claude Code ›** Setup Prompt…, Draft a Skill with Claude Code… (Skills) |
+| Right-click a greyed "none" row | What is this for? · New… · **Ask Claude Code ›** Setup Prompt… |
+| Right-click a scope heading, project or plugin | Set Up Claude Code Here… · **Ask Claude Code ›** Set Up with Claude Code… (projects), Personalise Claude Code… (User) · Export Report · Detach Folder |
 | Snippets view | New Snippet · Import / Export · on a snippet: Send to Claude Code · Copy · Insert into CLAUDE.md or Rule… · Edit Text · Rename · Tags · Delete |
 | Command Palette | Open Overview · Show Effective Settings · Show Hook Timeline · Show Context Budget · Show Security Review · Show Recent Changes · Test a Tool Call Against Permission Rules… · Change Setting… · Clean Up Configuration… · Set Up with Claude Code… · Harden Security with Claude Code… · Draft a Skill with Claude Code… · Personalise Claude Code… · New Snippet · Show Problems · Attach Folder… · Filter… · Clear Filter · Group by Type / Scope · Refresh · Get Started |
 
-Actions that change files appear only while `claudeExplorer.allowEditing` is on.
+The right-click menu keeps the everyday actions at the top and groups the rest into **Copy**,
+**Edit**, **Diagnose** and **Ask Claude Code** submenus; a submenu only appears when something in
+it applies to that row. Actions that change files appear only while `claudeExplorer.allowEditing`
+is on.
 
 ### Row actions
 
@@ -242,7 +256,9 @@ first. Each can be copied or sent to a new Claude Code session in a terminal:
 ## Colours
 
 The four scope headings (System, User, Plugins, Workspace) carry a soft tint, and type group icons
-share one muted colour. Each has separate values for dark, light and high-contrast themes, so they
+share one muted colour. Items you can switch on and off (skills, commands, plugins, project MCP
+servers, CLAUDE.md files, rules) show their state in the icon colour: faint when on, solid when off,
+with the label dimmed too. These two state colours stay on even with tinting turned off. Each has separate values for dark, light and high-contrast themes, so they
 follow your theme. Turn tinting off with `claudeExplorer.colorful`, or change a colour in
 `workbench.colorCustomizations`:
 
@@ -252,7 +268,9 @@ follow your theme. Turn tinting off with `claudeExplorer.colorful`, or change a 
   "claudeExplorer.scope.user": "#7FB3E6",
   "claudeExplorer.scope.plugin": "#B69AE0",
   "claudeExplorer.scope.workspace": "#86C48E",
-  "claudeExplorer.groupIcon": "#8FA6BF"
+  "claudeExplorer.groupIcon": "#8FA6BF",
+  "claudeExplorer.toggle.enabled": "#FFFFFF66",
+  "claudeExplorer.toggle.disabled": "#FFFFFF"
 }
 ```
 
@@ -268,7 +286,7 @@ scopes. Anything else you want to see, you attach explicitly.
 |---|---|---|
 | `claudeExplorer.defaultGrouping` | `scope` | Grouping on first open |
 | `claudeExplorer.colorful` | `true` | Soft tint on scope headings and type group icons |
-| `claudeExplorer.showUnusedSurfaces` | `true` | Greyed rows for surfaces you have not configured |
+| `claudeExplorer.showUnusedSurfaces` | `true` | Default for the eye icon on each heading: show greyed rows for unconfigured surfaces, empty projects and the "no policy" row; changing it resets every heading |
 | `claudeExplorer.showPluginProvided` | `true` | Include plugin-provided assets |
 | `claudeExplorer.extraProjectPaths` | `[]` | Extra folders, merged with the ones attached via `+` |
 | `claudeExplorer.autoRefresh` | `true` | Watch config directories and refresh on change |

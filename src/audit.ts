@@ -22,7 +22,7 @@ import { renderReport } from './analysis/report';
 import { lintSkill } from './analysis/skillLint';
 import { promptsFor } from './prompts';
 import { collect } from './discovery';
-import { GUIDES, renderGuide } from './guides';
+import { AUTO_PROMPT_KEYS, Guide, GUIDES, promptPreview, renderGuide, templateKeys } from './guides';
 import { Asset, ASSET_ORDER, ASSET_LABELS } from './discovery/types';
 
 // `node dist/audit.js <open folder...> --attach <folder...>`
@@ -116,7 +116,11 @@ if (guideArg !== -1) {
 Guides: ${kinds.length - missing.length}/${kinds.length} surfaces covered`);
     for (const k of kinds) {
       const g = GUIDES[k];
-      console.log(`  ${pad(k, 14)} ${g ? `"${g.title}" · prompt ${g.prompt.length} chars` : 'MISSING'}`);
+      const issues = g ? guideIssues(g) : ['MISSING'];
+      console.log(`  ${pad(k, 14)} ${g ? `"${g.title}" · ${g.prompts.length} prompts · ${g.links.length} links` : ''}${issues.length ? `  !! ${issues.join('; ')}` : ''}`);
+      if (issues.length > 0) {
+        process.exitCode = 1;
+      }
     }
     if (missing.length > 0) {
       process.exitCode = 1;
@@ -239,7 +243,13 @@ if (argv.includes('--prompts')) {
       count++;
     }
   }
-  console.log(`\n--- prompts ---\n  ${count} prompts generated for ${real.length} items`);
+  for (const g of Object.values(GUIDES)) {
+    for (const p of g.prompts) {
+      settingsRendered.push(promptPreview(p));
+      count++;
+    }
+  }
+  console.log(`\n--- prompts ---\n  ${count} prompts generated for ${real.length} items and ${Object.keys(GUIDES).length} guides`);
 }
 
 // `--cleanup` lists what Clean Up Configuration would offer; nothing is removed.
@@ -251,6 +261,34 @@ if (argv.includes('--cleanup')) {
     settingsRendered.push(line);
     console.log(line);
   }
+}
+
+/** What `--guide all` treats as a broken guide. */
+function guideIssues(g: Guide): string[] {
+  const issues: string[] = [];
+  if (g.prompts.length < 2) {
+    issues.push('fewer than 2 prompts');
+  }
+  for (const p of g.prompts) {
+    const used = templateKeys(p.template);
+    const fields = new Set(p.fields.map((f) => f.key));
+    const unknown = [...used].filter((k) => !fields.has(k) && !AUTO_PROMPT_KEYS.has(k));
+    const unused = [...fields].filter((k) => !used.has(k));
+    if (unknown.length) {
+      issues.push(`${p.id}: no field for ${unknown.join(', ')}`);
+    }
+    if (unused.length) {
+      issues.push(`${p.id}: unused field ${unused.join(', ')}`);
+    }
+  }
+  const urls = g.links.map((l) => l.url);
+  if (urls.some((u) => !u.startsWith('https://'))) {
+    issues.push('non-https link');
+  }
+  if (new Set(urls).size !== urls.length) {
+    issues.push('duplicate link');
+  }
+  return issues;
 }
 
 // `--recent` lists what changed in the last 14 days; `--deps` the hover dependencies.

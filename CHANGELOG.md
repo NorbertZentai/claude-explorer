@@ -71,12 +71,32 @@ Initial version.
   with Claude Code… and Personalise Claude Code…, each copied or sent to a new session. Copy
   Prompt… can also send its prompt with the ▶ button.
 - A broken `@import` in a `CLAUDE.md` is reported as a problem.
+- Guides are much fuller: a summary, when not to use a surface, getting-started steps, an example
+  file, commands, settings, pitfalls, troubleshooting, and checked links to downloads, catalogs and
+  documentation, for all 16 surfaces.
+- Setup Prompt… replaces Copy Setup Prompt: each guide offers two to four prompts, and the extension
+  asks for their blanks before copying the prompt or sending it to Claude Code.
+- All prompts share one structure (goal, inspect first, requirements, constraints, verify, deliver),
+  and rows gained prompts to add skill supporting files, trim an MCP server's tools, audit a plugin
+  and give a subagent persistent memory.
+- Switchable items show their state in the icon colour: faint when on, solid when off
+  (`claudeExplorer.toggle.enabled`, `claudeExplorer.toggle.disabled`). A disabled plugin or MCP server
+  no longer shows a warning icon for being disabled; the reason stays in the tooltip.
+- An eye icon on the System, User and Workspace headings hides or shows their empty rows (greyed
+  placeholders, projects without configuration, the "no policy" row), remembered per heading, with a
+  count of what is hidden. `claudeExplorer.showUnusedSurfaces` is now the default for it.
+- The right-click menu on tree rows groups its actions into Copy, Edit, Diagnose and Ask Claude Code
+  submenus, with Run, Open, Reveal, Show in Overview and Move to Trash at the top level.
 
 ### Fixed
 
 - A credential assigned inside a permission rule, such as `Bash(PGPASSWORD=… psql:*)`, was shown
   unmasked in effective settings; the redaction check now also catches `password=`, `secret=` and
   `token=` assignments.
+- What is this for? and the setup prompt did nothing when opened from the right-click menu of a
+  greyed "none" row.
+- Guides linked to a removed slash-commands page and named an `enableWorkflows` setting that does not
+  exist.
 - `npm run audit` treated the value of `--kind`, `--guide` and `--report` as a folder to scan.
 
 - Descriptions written as a plain YAML value wrapped onto indented lines were read as empty, so

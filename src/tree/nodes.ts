@@ -3,7 +3,7 @@ import { AssetTokens } from '../analysis/contextBudget';
 import { Dependencies } from '../analysis/dependencies';
 import { Account } from '../discovery/account';
 import { ReportTarget } from '../analysis/report';
-import { Asset, AssetKind, Scope } from '../discovery/types';
+import { Asset, AssetKind, Scope, ScopeKind } from '../discovery/types';
 import { CREATABLE_KINDS } from '../edit/templates';
 import { isEditingAllowed, KIND_ICONS, Tone, toneIcon, toneUri } from './style';
 
@@ -33,6 +33,8 @@ export class GroupNode extends vscode.TreeItem {
   folders?: string[];
   /** What "Export Report" covers when run on this group. */
   reportTarget?: ReportTarget;
+  /** Set on a System, User or Workspace heading: whose empty rows its eye icon hides. */
+  emptiesScope?: ScopeKind;
   /** Where "+" puts a new item: set when the group belongs to one user or project scope. */
   createTarget?: { scope: Scope; base: string };
 
@@ -90,6 +92,10 @@ export class AssetNode extends vscode.TreeItem {
       // Deliberately dim and non-actionable-looking: it is a signpost, not content.
       tone = { type: 'muted' };
       icon = 'circle-outline';
+    } else if (asset.toggle && asset.enabled === false) {
+      // Switched off: the kind icon drawn solid. For a plugin or MCP server "not enabled" is
+      // the problem text itself, so the state wins over the warning icon; the tooltip keeps it.
+      tone = { type: 'toggleOff' };
     } else if (asset.problem) {
       tone = { type: 'problem' };
       icon = 'warning';
@@ -99,6 +105,9 @@ export class AssetNode extends vscode.TreeItem {
       // Not broken, just never in effect: dim it, and say why in the tooltip.
       tone = { type: 'muted' };
       icon = 'debug-step-over';
+    } else if (asset.toggle) {
+      // Switched on: the kind icon drawn faint, so the off rows stand out.
+      tone = { type: 'toggleOn' };
     } else {
       tone = { type: 'plain' };
     }

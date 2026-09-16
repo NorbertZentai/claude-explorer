@@ -55,6 +55,10 @@ export type Tone =
   | { type: 'scope'; scope: ScopeKind }
   | { type: 'problem' }
   | { type: 'muted' }
+  /** A switchable item that is on: its icon is drawn faint. */
+  | { type: 'toggleOn' }
+  /** A switchable item that is off: its icon is drawn solid, its label dimmed. */
+  | { type: 'toggleOff' }
   | { type: 'plain' };
 
 /** Off means the extension never writes a file: the enable/disable actions disappear. */
@@ -76,6 +80,10 @@ function toneColor(tone: Tone): string | undefined {
       return 'list.warningForeground';
     case 'muted':
       return 'disabledForeground';
+    case 'toggleOn':
+      return 'claudeExplorer.toggle.enabled';
+    case 'toggleOff':
+      return 'claudeExplorer.toggle.disabled';
     case 'plain':
       return undefined;
   }
@@ -84,8 +92,8 @@ function toneColor(tone: Tone): string | undefined {
 /** A theme icon tinted by tone, or left in the default foreground when colour is off. */
 export function toneIcon(name: string, tone: Tone): vscode.ThemeIcon {
   const color = toneColor(tone);
-  // Problems and dimmed rows were tinted before colour became optional; keep that.
-  const always = tone.type === 'problem' || tone.type === 'muted';
+  // Problems, dimmed rows and on/off state carry meaning, so they stay tinted with colour off.
+  const always = tone.type === 'problem' || tone.type === 'muted' || tone.type === 'toggleOn' || tone.type === 'toggleOff';
   return color && (always || isColorful())
     ? new vscode.ThemeIcon(name, new vscode.ThemeColor(color))
     : new vscode.ThemeIcon(name);
@@ -102,7 +110,9 @@ export function toneUri(tone: Tone): vscode.Uri | undefined {
       ? `scope/${tone.scope}`
       : tone.type === 'problem' || tone.type === 'muted'
         ? tone.type
-        : undefined;
+        : tone.type === 'toggleOff'
+          ? 'muted'
+          : undefined;
   return key ? vscode.Uri.from({ scheme: DECORATION_SCHEME, path: `/${key}` }) : undefined;
 }
 

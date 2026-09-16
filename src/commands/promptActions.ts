@@ -2,6 +2,8 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { userClaudeDir } from '../discovery/scopes';
 import { surfaceDirs } from '../discovery/surfaces';
+import { AssetKind, Scope } from '../discovery/types';
+import { GUIDES, GuidePrompt, PromptField, renderPrompt } from '../guides';
 import { draftSkillPrompt, PAGE_PROMPTS, PERSONAL_PREFERENCES, personalisePrompt, workspaceSetupPrompt } from '../prompts';
 import { activeProjectRoot } from '../statusBar';
 import { AssetNode, GroupNode } from '../tree/nodes';
@@ -19,6 +21,10 @@ export function registerPromptActions(context: vscode.ExtensionContext, provider
   const command = (id: string, run: (...args: never[]) => unknown): void => {
     context.subscriptions.push(vscode.commands.registerCommand(id, (...args: never[]) => reportErrors(async () => run(...args))));
   };
+
+  command('claudeExplorer.copyGuidePrompt', (target?: AssetKind | GroupNode | AssetNode) =>
+    setupPromptWizard(context, provider, target),
+  );
 
   command('claudeExplorer.setUpWithClaude', async (node?: GroupNode) => {
     const root = node?.scopeRoot ?? (await pickProject(provider));
@@ -96,6 +102,76 @@ export function registerPromptActions(context: vscode.ExtensionContext, provider
     }
     await deliverPrompt(context, personalisePrompt(preferences), activeProjectRoot(provider), 'Personalise', 'Update ~/.claude/CLAUDE.md with your preferences');
   });
+}
+
+/**
+ * "Setup Prompt…": pick one of the guide's prompts, answer its fields, then copy the filled
+ * prompt or send it to Claude Code. Opened from a type group or a greyed placeholder row.
+ */
+async function setupPromptWizard(
+  context: vscode.ExtensionContext,
+  provider: ClaudeTreeProvider,
+  target: AssetKind | GroupNode | AssetNode | undefined,
+): Promise<void> {
+  const kind =
+    typeof target === 'string' ? target : target instanceof GroupNode ? target.assetKind : target instanceof AssetNode ? target.asset.kind : undefined;
+  const guide = kind ? GUIDES[kind] : undefined;
+  if (!kind || !guide) {
+    return;
+  }
+  const picked =
+    guide.prompts.length === 1
+      ? { prompt: guide.prompts[0] }
+      : await vscode.window.showQuickPick(
+          guide.prompts.map((p) => ({ label: p.label, description: p.detail, prompt: p })),
+          { title: `${guide.title}: setup prompts`, matchOnDescription: true, placeHolder: 'Pick what you want Claude Code to set up' },
+        );
+  if (!picked) {
+    return;
+  }
+  const prompt: GuidePrompt = picked.prompt;
+
+  // Where the prompt was opened from decides the scope-dependent values.
+  const scope: Scope | undefined =
+    target instanceof GroupNode ? target.createTarget?.scope : target instanceof AssetNode ? target.asset.scope : undefined;
+  const base = scope?.kind === 'user' ? userClaudeDir() : scope?.root;
+  const values: Record<string, string | undefined> = {
+    scopeLabel: scope ? (scope.kind === 'user' ? 'user level (~/.claude)' : `the ${scope.label} project`) : undefined,
+    surfaceDir: scope && base ? surfaceDirs(kind, scope.kind, base)[0] : undefined,
+  };
+
+  const total = prompt.fields.length;
+  for (const [index, field] of prompt.fields.entries()) {
+    const value = await askField(field, `${prompt.label} (${index + 1}/${total})`, scope);
+    if (value === undefined) {
+      return;
+    }
+    values[field.key] = value;
+  }
+
+  const cwd = scope?.kind === 'workspace' ? scope.root : activeProjectRoot(provider);
+  await deliverPrompt(context, renderPrompt(prompt, values), cwd, prompt.label, `${guide.title}: ${prompt.label}`);
+}
+
+/** One field: a pick for choices, a text box otherwise. Undefined means cancelled. */
+async function askField(field: PromptField, title: string, scope: Scope | undefined): Promise<string | undefined> {
+  if (field.choices) {
+    // Opened on a project's group, a scope question defaults to that project.
+    const preferred = field.key === 'scope' && scope ? (scope.kind === 'user' ? 'User' : 'Project') : undefined;
+    const items = field.choices
+      .map((c) => ({ label: c.label, description: c.detail, value: c.value }))
+      .sort((a, b) => (a.label === preferred ? -1 : b.label === preferred ? 1 : 0));
+    const picked = await vscode.window.showQuickPick(items, { title, placeHolder: field.label });
+    return picked?.value;
+  }
+  const typed = await vscode.window.showInputBox({
+    title,
+    prompt: field.label + (field.optional ? ' (optional, leave empty to skip)' : ''),
+    placeHolder: field.placeholder,
+    value: field.default,
+    validateInput: (v) => (field.optional || v.trim() ? undefined : 'This one is needed for the prompt.'),
+  });
+  return typed === undefined ? undefined : typed.trim();
 }
 
 async function pickProject(provider: ClaudeTreeProvider): Promise<string | undefined> {
