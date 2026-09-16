@@ -22,7 +22,7 @@ import { Asset, Scope } from './types';
 
 export const SYSTEM_SCOPE: Scope = { kind: 'system', label: 'system', root: managedSettingsDir() };
 
-function managedSettingsDir(): string {
+export function managedSettingsDir(): string {
   switch (process.platform) {
     case 'win32':
       return path.join(process.env.PROGRAMFILES ?? 'C:\\Program Files', 'ClaudeCode');

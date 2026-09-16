@@ -82,6 +82,16 @@ export function parseFrontmatter(text: string): ParsedDocument {
         i = next;
         continue;
       }
+      // A plain scalar wrapped onto indented lines (`description:` then prose below it)
+      // is folded into one line, as YAML does. An indented `key: value` is a nested map,
+      // which stays empty here.
+      const folded = readBlockScalar(lines, i + 1, end);
+      const firstLine = lines.slice(i + 1, folded.next).find((l) => l.trim() !== '');
+      if (folded.value !== '' && firstLine !== undefined && !/^\s+[A-Za-z0-9_-]+:(\s|$)/.test(firstLine)) {
+        data[key] = folded.value.replace(/\s*\n\s*/g, ' ');
+        i = folded.next;
+        continue;
+      }
       data[key] = '';
       i++;
       continue;

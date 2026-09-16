@@ -1,9 +1,17 @@
 import * as vscode from 'vscode';
 import { Account } from '../discovery/account';
-import { Asset, AssetKind } from '../discovery/types';
-import { KIND_ICONS, Tone, toneIcon, toneUri } from './style';
+import { ReportTarget } from '../analysis/report';
+import { Asset, AssetKind, Scope } from '../discovery/types';
+import { CREATABLE_KINDS } from '../edit/templates';
+import { isEditingAllowed, KIND_ICONS, Tone, toneIcon, toneUri } from './style';
 
 export type Node = GroupNode | AssetNode | MessageNode | AccountNode;
+
+
+/** Kinds that are one file or folder of their own, and so can be copied, renamed, deleted. */
+const FILE_KINDS = new Set<AssetKind>(['skill', 'command', 'agent', 'rule', 'outputStyle', 'workflow', 'theme']);
+/** Kinds the Overview page has a row for. */
+const DASHBOARD_KINDS = new Set<AssetKind>(['skill', 'command', 'agent', 'rule', 'memory', 'setting', 'hook']);
 
 export class GroupNode extends vscode.TreeItem {
   readonly type = 'group' as const;
@@ -11,6 +19,12 @@ export class GroupNode extends vscode.TreeItem {
   scopeRoot?: string;
   /** Set on a type group ("Skills", "Hooks") so it can open that surface's guide. */
   assetKind?: AssetKind;
+  /** Existing directories a type group's assets live in, for "Open Folder". */
+  folders?: string[];
+  /** What "Export Report" covers when run on this group. */
+  reportTarget?: ReportTarget;
+  /** Where "+" puts a new item: set when the group belongs to one user or project scope. */
+  createTarget?: { scope: Scope; base: string };
 
   constructor(
     label: string,
@@ -49,7 +63,8 @@ export class AssetNode extends vscode.TreeItem {
     super(asset.name, vscode.TreeItemCollapsibleState.None);
 
     const badge = showScope ? `[${asset.scope.label}] ` : '';
-    this.description = `${badge}${asset.description ?? ''}`.trim();
+    const shadowed = asset.overriddenBy?.everywhere ? 'overridden · ' : '';
+    this.description = `${badge}${shadowed}${asset.description ?? ''}`.trim();
     this.tooltip = buildTooltip(asset);
 
     // Rows stay uncoloured; only the ones that need attention are tinted.
@@ -64,6 +79,10 @@ export class AssetNode extends vscode.TreeItem {
       icon = 'warning';
     } else if (asset.enabled === false) {
       tone = { type: 'muted' };
+    } else if (asset.overriddenBy?.everywhere) {
+      // Not broken, just never in effect: dim it, and say why in the tooltip.
+      tone = { type: 'muted' };
+      icon = 'debug-step-over';
     } else {
       tone = { type: 'plain' };
     }
@@ -76,6 +95,36 @@ export class AssetNode extends vscode.TreeItem {
     }
     if (asset.docs) {
       flags.push('documented');
+    }
+    const editing = isEditingAllowed();
+    if (asset.toggle && editing) {
+      flags.push('togglable', asset.enabled === false ? 'disabled' : 'enabled');
+    }
+    const ownScope = asset.scope.kind === 'user' || asset.scope.kind === 'workspace';
+    if (asset.placeholder && editing && ownScope && CREATABLE_KINDS.has(asset.kind)) {
+      flags.push('creatable');
+    }
+    if (!asset.placeholder) {
+      // Only your own files: plugin content is managed by the plugin, system by an admin.
+      if (FILE_KINDS.has(asset.kind) && (asset.scope.kind === 'user' || asset.scope.kind === 'workspace')) {
+        flags.push('fileBacked');
+        if (editing) {
+          flags.push('editable');
+        }
+      }
+      if (asset.kind === 'skill') {
+        flags.push('skill');
+      }
+      // Stale approvals point at settings.local.json and have no definition to read.
+      if (asset.kind === 'mcp' && asset.sourcePath.endsWith('.mcp.json')) {
+        flags.push('mcpServer');
+      }
+      if (asset.kind === 'setting' && asset.name === 'permissions' && editing) {
+        flags.push('permissions');
+      }
+      if (asset.overriddenBy || asset.problem || DASHBOARD_KINDS.has(asset.kind)) {
+        flags.push('dashboardable');
+      }
     }
     this.contextValue = flags.join(' ');
 
@@ -177,6 +226,12 @@ function buildTooltip(asset: Asset): vscode.MarkdownString {
   }
   if (asset.modified !== undefined) {
     md.appendMarkdown(`- **Last modified:** ${escape(formatModified(asset.modified))}\n`);
+  }
+  if (asset.overriddenBy) {
+    const o = asset.overriddenBy;
+    md.appendMarkdown(
+      `\n$(debug-step-over) Overridden by **${escape(o.name)}** in _${escape(o.scopeLabel)}_. ${escape(o.reason)}\n`,
+    );
   }
   if (asset.problem) {
     md.appendMarkdown(`\n$(warning) ${escape(asset.problem)}\n`);

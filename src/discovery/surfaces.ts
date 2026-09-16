@@ -259,3 +259,15 @@ export function placeholdersFor(base: string, scope: Scope, present: ReadonlySet
 function shorten(text: string): string {
   return text.length > 60 ? `${text.slice(0, 57)}…` : text;
 }
+
+/**
+ * The directories a surface lives in for one scope, given that scope's base (`~/.claude`
+ * for user, the project root for workspace, the install path for a plugin). For a surface
+ * that is a single file, the directory containing it.
+ */
+export function surfaceDirs(kind: AssetKind, scope: ScopeKind, base: string): string[] {
+  const surface = SURFACES.find((s) => s.kind === kind);
+  return (surface?.locations ?? [])
+    .filter((l) => l.scope === scope)
+    .map((l) => (l.type === 'dir' ? path.join(base, l.rel) : path.dirname(path.join(base, l.rel))));
+}

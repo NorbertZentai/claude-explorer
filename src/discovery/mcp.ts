@@ -61,6 +61,7 @@ export function discoverProjectMcp(projectRoot: string, scope: Scope): Asset[] {
       line: findLine(text, `"${name}"`),
       detail: detailFor(server),
       enabled,
+      toggle: { file: path.join(projectRoot, '.claude', 'settings.local.json'), target: 'mcp', key: name },
       problem: enabled
         ? undefined
         : disabledList.includes(name)

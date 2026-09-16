@@ -45,7 +45,7 @@
     "viewsWelcome": [
       {
         "view": "claudeExplorer.tree",
-        "contents": "No Claude Code configuration found.\n\nUser-level assets are read from your home directory; workspace assets from the open folder's .claude directory.\n\n[Refresh](command:claudeExplorer.refresh)"
+        "contents": "No Claude Code configuration found.\n\nUser-level assets are read from your home directory; workspace assets from the open folder's .claude directory.\n\n[Refresh](command:claudeExplorer.refresh)\n\n[Get Started](command:claudeExplorer.openWalkthrough)"
       }
     ],
     "commands": [
@@ -128,10 +128,141 @@
         "title": "Copy Setup Prompt",
         "category": "Explorer for Claude Code",
         "icon": "$(clippy)"
+      },
+      {
+        "command": "claudeExplorer.openDashboard",
+        "title": "Open Overview",
+        "category": "Explorer for Claude Code",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "claudeExplorer.showEffectiveSettings",
+        "title": "Show Effective Settings",
+        "category": "Explorer for Claude Code",
+        "icon": "$(settings)"
+      },
+      {
+        "command": "claudeExplorer.showHookTimeline",
+        "title": "Show Hook Timeline",
+        "category": "Explorer for Claude Code",
+        "icon": "$(history)"
+      },
+      {
+        "command": "claudeExplorer.showContextBudget",
+        "title": "Show Context Budget",
+        "category": "Explorer for Claude Code",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "claudeExplorer.enableItem",
+        "title": "Enable",
+        "category": "Explorer for Claude Code",
+        "icon": "$(pass)"
+      },
+      {
+        "command": "claudeExplorer.disableItem",
+        "title": "Disable",
+        "category": "Explorer for Claude Code",
+        "icon": "$(circle-slash)"
+      },
+      {
+        "command": "claudeExplorer.openWalkthrough",
+        "title": "Get Started",
+        "category": "Explorer for Claude Code",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "claudeExplorer.openFolder",
+        "title": "Open Folder",
+        "category": "Explorer for Claude Code",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "claudeExplorer.copyReference",
+        "title": "Copy as @-Reference",
+        "category": "Explorer for Claude Code",
+        "icon": "$(mention)"
+      },
+      {
+        "command": "claudeExplorer.revealInDashboard",
+        "title": "Show in Overview",
+        "category": "Explorer for Claude Code",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "claudeExplorer.copyToScope",
+        "title": "Copy to…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "claudeExplorer.renameItem",
+        "title": "Rename…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "claudeExplorer.deleteItem",
+        "title": "Move to Trash",
+        "category": "Explorer for Claude Code",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "claudeExplorer.addPermissionRule",
+        "title": "Add Permission Rule…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(add)"
+      },
+      {
+        "command": "claudeExplorer.lintSkill",
+        "title": "Check Skill",
+        "category": "Explorer for Claude Code",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "claudeExplorer.copyMcpAddCommand",
+        "title": "Copy claude mcp add Command",
+        "category": "Explorer for Claude Code",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "claudeExplorer.testMcpServer",
+        "title": "Test MCP Server",
+        "category": "Explorer for Claude Code",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "claudeExplorer.exportReport",
+        "title": "Export Report",
+        "category": "Explorer for Claude Code",
+        "icon": "$(export)"
+      },
+      {
+        "command": "claudeExplorer.createItem",
+        "title": "New…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(add)"
+      },
+      {
+        "command": "claudeExplorer.initClaudeDir",
+        "title": "Set Up Claude Code Here…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "claudeExplorer.copyPrompt",
+        "title": "Copy Prompt…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(comment-discussion)"
       }
     ],
     "menus": {
       "view/title": [
+        {
+          "command": "claudeExplorer.openDashboard",
+          "when": "view == claudeExplorer.tree",
+          "group": "navigation@0"
+        },
         {
           "command": "claudeExplorer.filter",
           "when": "view == claudeExplorer.tree && !claudeExplorer.filtered",
@@ -161,17 +292,17 @@
       "view/item/context": [
         {
           "command": "claudeExplorer.showGuide",
-          "when": "view == claudeExplorer.tree && viewItem == typeGroup",
+          "when": "view == claudeExplorer.tree && viewItem =~ /^typeGroup/",
           "group": "inline@1"
         },
         {
           "command": "claudeExplorer.addWorkspaceFolder",
-          "when": "view == claudeExplorer.tree && viewItem == workspaceGroup",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bworkspaceGroup\\b/",
           "group": "inline@1"
         },
         {
           "command": "claudeExplorer.removeWorkspaceFolder",
-          "when": "view == claudeExplorer.tree && viewItem == attachedScope",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\battachedScope\\b/",
           "group": "inline@1"
         },
         {
@@ -196,28 +327,158 @@
         },
         {
           "command": "claudeExplorer.removeWorkspaceFolder",
-          "when": "view == claudeExplorer.tree && viewItem == attachedScope",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\battachedScope\\b/",
           "group": "9_modify@1"
         },
         {
           "command": "claudeExplorer.showGuide",
-          "when": "view == claudeExplorer.tree && viewItem == typeGroup",
+          "when": "view == claudeExplorer.tree && viewItem =~ /^typeGroup/",
           "group": "0_guide@1"
         },
         {
           "command": "claudeExplorer.copyGuidePrompt",
-          "when": "view == claudeExplorer.tree && viewItem == typeGroup",
+          "when": "view == claudeExplorer.tree && viewItem =~ /^typeGroup/",
           "group": "0_guide@2"
         },
         {
           "command": "claudeExplorer.showGuide",
-          "when": "view == claudeExplorer.tree && viewItem == placeholder",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bplaceholder\\b/",
           "group": "0_guide@1"
         },
         {
           "command": "claudeExplorer.copyGuidePrompt",
-          "when": "view == claudeExplorer.tree && viewItem == placeholder",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bplaceholder\\b/",
           "group": "0_guide@2"
+        },
+        {
+          "command": "claudeExplorer.showEffectiveSettings",
+          "when": "view == claudeExplorer.tree && viewItem =~ /kind-(setting|policy)\\b/",
+          "group": "0_guide@3"
+        },
+        {
+          "command": "claudeExplorer.showHookTimeline",
+          "when": "view == claudeExplorer.tree && viewItem =~ /kind-hook\\b/",
+          "group": "0_guide@3"
+        },
+        {
+          "command": "claudeExplorer.showContextBudget",
+          "when": "view == claudeExplorer.tree && viewItem =~ /kind-(memory|skill|rule)\\b/",
+          "group": "0_guide@3"
+        },
+        {
+          "command": "claudeExplorer.disableItem",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\btogglable enabled\\b/",
+          "group": "inline@2"
+        },
+        {
+          "command": "claudeExplorer.enableItem",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\btogglable disabled\\b/",
+          "group": "inline@2"
+        },
+        {
+          "command": "claudeExplorer.disableItem",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\btogglable enabled\\b/",
+          "group": "3_toggle@1"
+        },
+        {
+          "command": "claudeExplorer.enableItem",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\btogglable disabled\\b/",
+          "group": "3_toggle@1"
+        },
+        {
+          "command": "claudeExplorer.openFolder",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bfolders\\b/",
+          "group": "inline@2"
+        },
+        {
+          "command": "claudeExplorer.addPermissionRule",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bpermissions\\b/",
+          "group": "inline@1"
+        },
+        {
+          "command": "claudeExplorer.testMcpServer",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bmcpServer\\b/",
+          "group": "inline@1"
+        },
+        {
+          "command": "claudeExplorer.openFolder",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bfolders\\b/",
+          "group": "1_open@3"
+        },
+        {
+          "command": "claudeExplorer.revealInDashboard",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bdashboardable\\b/",
+          "group": "1_open@3"
+        },
+        {
+          "command": "claudeExplorer.copyReference",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bopenable\\b/",
+          "group": "2_copy@3"
+        },
+        {
+          "command": "claudeExplorer.copyMcpAddCommand",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bmcpServer\\b/",
+          "group": "2_copy@4"
+        },
+        {
+          "command": "claudeExplorer.lintSkill",
+          "when": "view == claudeExplorer.tree && viewItem =~ /(^| )skill( |$)/",
+          "group": "4_check@1"
+        },
+        {
+          "command": "claudeExplorer.testMcpServer",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bmcpServer\\b/",
+          "group": "4_check@2"
+        },
+        {
+          "command": "claudeExplorer.copyToScope",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\beditable\\b/",
+          "group": "5_edit@1"
+        },
+        {
+          "command": "claudeExplorer.renameItem",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\beditable\\b/",
+          "group": "5_edit@2"
+        },
+        {
+          "command": "claudeExplorer.addPermissionRule",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bpermissions\\b/ || view == claudeExplorer.tree && viewItem =~ /\\bkind-setting\\b/ && config.claudeExplorer.allowEditing",
+          "group": "5_edit@3"
+        },
+        {
+          "command": "claudeExplorer.exportReport",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bexportable\\b/",
+          "group": "6_export@1"
+        },
+        {
+          "command": "claudeExplorer.deleteItem",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\beditable\\b/",
+          "group": "9_delete@1"
+        },
+        {
+          "command": "claudeExplorer.createItem",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bcreatable\\b/",
+          "group": "inline@0"
+        },
+        {
+          "command": "claudeExplorer.initClaudeDir",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bnoClaudeDir\\b/",
+          "group": "inline@0"
+        },
+        {
+          "command": "claudeExplorer.createItem",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bcreatable\\b/",
+          "group": "5_edit@0"
+        },
+        {
+          "command": "claudeExplorer.initClaudeDir",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bnoClaudeDir\\b/",
+          "group": "5_edit@0"
+        },
+        {
+          "command": "claudeExplorer.copyPrompt",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bopenable\\b/",
+          "group": "2_copy@5"
         }
       ],
       "commandPalette": [
@@ -244,6 +505,74 @@
         {
           "command": "claudeExplorer.revealInExplorer",
           "when": "false"
+        },
+        {
+          "command": "claudeExplorer.enableItem",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.disableItem",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.openFolder",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.copyReference",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.revealInDashboard",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.copyToScope",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.renameItem",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.deleteItem",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.addPermissionRule",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.lintSkill",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.copyMcpAddCommand",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.testMcpServer",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.exportReport",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.createItem",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.initClaudeDir",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.copyPrompt",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.showGuide",
+          "when": "false"
         }
       ]
     },
@@ -251,27 +580,52 @@
       {
         "id": "claudeExplorer.scope.system",
         "description": "Tint for the System heading in Explorer for Claude Code.",
-        "defaults": { "dark": "#E38B84", "light": "#B5473F", "highContrast": "#FF9E96", "highContrastLight": "#9E2F27" }
+        "defaults": {
+          "dark": "#E38B84",
+          "light": "#B5473F",
+          "highContrast": "#FF9E96",
+          "highContrastLight": "#9E2F27"
+        }
       },
       {
         "id": "claudeExplorer.scope.user",
         "description": "Tint for the User heading in Explorer for Claude Code.",
-        "defaults": { "dark": "#7FB3E6", "light": "#2F6DB0", "highContrast": "#8CC8FF", "highContrastLight": "#1F5594" }
+        "defaults": {
+          "dark": "#7FB3E6",
+          "light": "#2F6DB0",
+          "highContrast": "#8CC8FF",
+          "highContrastLight": "#1F5594"
+        }
       },
       {
         "id": "claudeExplorer.scope.plugin",
         "description": "Tint for the Plugins heading in Explorer for Claude Code.",
-        "defaults": { "dark": "#B69AE0", "light": "#7A52B8", "highContrast": "#CDB0FF", "highContrastLight": "#5E3A99" }
+        "defaults": {
+          "dark": "#B69AE0",
+          "light": "#7A52B8",
+          "highContrast": "#CDB0FF",
+          "highContrastLight": "#5E3A99"
+        }
       },
       {
         "id": "claudeExplorer.scope.workspace",
         "description": "Tint for the Workspace heading in Explorer for Claude Code.",
-        "defaults": { "dark": "#86C48E", "light": "#3C8A48", "highContrast": "#9BE0A4", "highContrastLight": "#256B31" }
+        "defaults": {
+          "dark": "#86C48E",
+          "light": "#3C8A48",
+          "highContrast": "#9BE0A4",
+          "highContrastLight": "#256B31"
+        }
       },
       {
         "id": "claudeExplorer.groupIcon",
         "description": "Muted icon colour for type groups (Skills, Hooks, …) in Explorer for Claude Code.",
-        "defaults": { "dark": "#8FA6BF", "light": "#5A7089", "highContrast": "#A9C0D8", "highContrastLight": "#3E536B" }
+        "defaults": {
+          "dark": "#8FA6BF",
+          "light": "#5A7089",
+          "highContrast": "#A9C0D8",
+          "highContrastLight": "#3E536B"
+        }
       }
     ],
     "configuration": {
@@ -334,9 +688,69 @@
           "markdownDescription": "Show a greyed row for every Claude Code surface a scope supports but has nothing configured for, so you can see what is available as well as what exists.",
           "scope": "window",
           "order": 20
+        },
+        "claudeExplorer.allowEditing": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show Enable/Disable actions for plugins and project MCP servers. They edit `~/.claude/settings.json` or the project's `.claude/settings.local.json`, always after a confirmation. Turn off and the extension never writes a file.",
+          "scope": "window",
+          "order": 70
         }
       }
-    }
+    },
+    "walkthroughs": [
+      {
+        "id": "gettingStarted",
+        "title": "Get started with Explorer for Claude Code",
+        "description": "See every piece of Claude Code configuration on this machine, what is broken, and what actually applies.",
+        "steps": [
+          {
+            "id": "browse",
+            "title": "Browse your configuration",
+            "description": "Every skill, hook, MCP server and setting Claude Code reads, grouped by where it comes from.\n[Open the sidebar](command:workbench.view.extension.claudeExplorer)",
+            "media": {
+              "markdown": "resources/walkthrough/browse.md"
+            },
+            "completionEvents": [
+              "onView:claudeExplorer.tree"
+            ]
+          },
+          {
+            "id": "problems",
+            "title": "Find problems",
+            "description": "Missing hook scripts, unapproved MCP servers, disabled plugins and more.\n[Show problems](command:claudeExplorer.showProblems)",
+            "media": {
+              "markdown": "resources/walkthrough/problems.md"
+            },
+            "completionEvents": [
+              "onCommand:claudeExplorer.showProblems"
+            ]
+          },
+          {
+            "id": "overview",
+            "title": "Open the overview",
+            "description": "Context budget, effective settings, hook timeline and overrides on one page.\n[Open overview](command:claudeExplorer.openDashboard)",
+            "media": {
+              "markdown": "resources/walkthrough/overview.md"
+            },
+            "completionEvents": [
+              "onCommand:claudeExplorer.openDashboard"
+            ]
+          },
+          {
+            "id": "attach",
+            "title": "Attach another project",
+            "description": "Browse a repository without opening it.\n[Attach a folder](command:claudeExplorer.addWorkspaceFolder)",
+            "media": {
+              "markdown": "resources/walkthrough/attach.md"
+            },
+            "completionEvents": [
+              "onCommand:claudeExplorer.addWorkspaceFolder"
+            ]
+          }
+        ]
+      }
+    ]
   },
   "scripts": {
     "compile": "node esbuild.mjs",
@@ -351,6 +765,7 @@
     "@types/node": "^22.10.0",
     "@types/vscode": "1.90.0",
     "esbuild": "^0.28.2",
+    "jsonc-parser": "^3.3.1",
     "typescript": "^5.7.0"
   },
   "author": {

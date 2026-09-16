@@ -50,3 +50,36 @@ export function redactCommandLine(parts: readonly string[]): string {
     })
     .join(' ');
 }
+
+const SECRET_KEY = /key|token|secret|password|pwd|credential|auth/i;
+
+/**
+ * A settings value made safe to display. Used by the effective-settings view, which, unlike
+ * the tree, shows values: `model: "opus"` is useful, a token under `apiKey` must not be.
+ * A key whose name suggests a credential is masked outright; any other string is treated
+ * like a command line, so an embedded `TOKEN=...` or a token-shaped word is masked too.
+ */
+export function redactValue(key: string, value: unknown): string {
+  if (value === null || value === undefined) {
+    return String(value);
+  }
+  if (typeof value !== 'string') {
+    // Callers flatten objects to leaves first; never stringify one wholesale.
+    return typeof value === 'object' ? (Array.isArray(value) ? '[…]' : '{…}') : String(value);
+  }
+  if (SECRET_KEY.test(key) && !/helper$/i.test(key)) {
+    return '••••••';
+  }
+  return redactCommandLine(value.split(/\s+/));
+}
+
+/**
+ * Free text from outside, such as an MCP server's stderr, made safe to show: every word
+ * that looks like a credential or a `KEY=value` secret is masked, line structure kept.
+ */
+export function redactText(text: string): string {
+  return text
+    .split('\n')
+    .map((line) => redactCommandLine(line.split(' ')))
+    .join('\n');
+}

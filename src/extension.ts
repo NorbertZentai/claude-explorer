@@ -2,6 +2,11 @@ import * as vscode from 'vscode';
 import { hasClaudeConfig, userClaudeDir } from './discovery/scopes';
 import { AssetKind } from './discovery/types';
 import { GUIDES, renderGuide } from './guides';
+import { registerCreateActions } from './commands/createActions';
+import { registerItemActions } from './commands/itemActions';
+import { confirm } from './commands/ui';
+import { DashboardPanel } from './dashboard/panel';
+import { setEnabled } from './edit/toggle';
 import { AssetNode, GroupNode } from './tree/nodes';
 import { ClaudeTreeProvider, Grouping } from './tree/provider';
 import { ToneDecorationProvider } from './tree/style';
@@ -155,6 +160,28 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }),
 
+    vscode.commands.registerCommand('claudeExplorer.enableItem', (node?: AssetNode) => toggleItem(provider, node, true)),
+    vscode.commands.registerCommand('claudeExplorer.disableItem', (node?: AssetNode) => toggleItem(provider, node, false)),
+
+    vscode.commands.registerCommand('claudeExplorer.openWalkthrough', () =>
+      vscode.commands.executeCommand(
+        'workbench.action.openWalkthrough',
+        `${context.extension.id}#gettingStarted`,
+        false,
+      ),
+    ),
+
+    vscode.commands.registerCommand('claudeExplorer.openDashboard', () => DashboardPanel.show(context, provider)),
+    vscode.commands.registerCommand('claudeExplorer.showEffectiveSettings', () =>
+      DashboardPanel.show(context, provider, { section: 'settings' }),
+    ),
+    vscode.commands.registerCommand('claudeExplorer.showHookTimeline', () =>
+      DashboardPanel.show(context, provider, { section: 'hooks' }),
+    ),
+    vscode.commands.registerCommand('claudeExplorer.showContextBudget', () =>
+      DashboardPanel.show(context, provider, { section: 'budget' }),
+    ),
+
     vscode.commands.registerCommand('claudeExplorer.showProblems', async () => {
       const problems = provider.problems();
       if (problems.length === 0) {
@@ -226,12 +253,14 @@ ${uri.path}`;
     ),
   );
 
+  registerItemActions(context, provider);
+  registerCreateActions(context, provider);
   registerWatchers(context, provider);
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(() => provider.refresh()),
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration('claudeExplorer.colorful')) {
+      if (e.affectsConfiguration('claudeExplorer.colorful') || e.affectsConfiguration('claudeExplorer.allowEditing')) {
         // Nothing on disk changed, so a rescan would find the same fingerprint and skip
         // the rebuild; icons are baked into the rows and need one.
         decorations.refresh();
@@ -245,6 +274,30 @@ ${uri.path}`;
 
   // Refresh on first run, as asked -- the view is populated before it is opened.
   provider.refresh();
+}
+
+/** Confirm, flip the documented switch, and rescan so the row reflects the file. */
+async function toggleItem(provider: ClaudeTreeProvider, node: AssetNode | undefined, enable: boolean): Promise<void> {
+  const toggle = node?.asset.toggle;
+  if (!toggle || !vscode.workspace.getConfiguration('claudeExplorer').get<boolean>('allowEditing', true)) {
+    return;
+  }
+  const what = toggle.target === 'plugin' ? 'plugin' : 'MCP server';
+  const verb = enable ? 'Enable' : 'Disable';
+  const ok = await confirm(
+    `${verb} ${what} "${node.asset.name}"?`,
+    `This edits ${toggle.file}. Claude Code sessions that are already running may need a restart to pick it up.`,
+    verb,
+  );
+  if (!ok) {
+    return;
+  }
+  try {
+    await setEnabled(toggle, enable);
+    provider.refresh();
+  } catch (err) {
+    void vscode.window.showErrorMessage(err instanceof Error ? err.message : String(err));
+  }
 }
 
 export function deactivate(): void {

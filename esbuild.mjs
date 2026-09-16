@@ -12,6 +12,9 @@ const ctx = await esbuild.context({
   target: 'node20',
   outfile: 'dist/extension.js',
   external: ['vscode'],
+  // jsonc-parser's `main` is a UMD build whose internal requires esbuild cannot follow;
+  // its ES module build bundles cleanly.
+  mainFields: ['module', 'main'],
   sourcemap: !production,
   minify: production,
   logLevel: 'info',

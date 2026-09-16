@@ -18,6 +18,7 @@ import { discoverProjectPlans, discoverUserPlans } from './plans';
 import { discoverSettings, settingsFilesFor } from './settings';
 import { discoverFromRegistry, placeholdersFor } from './surfaces';
 import { discoverSystem, SYSTEM_SCOPE } from './system';
+import { applyOverrides } from '../analysis/overrides';
 import { Asset, AssetKind, Scope, USER_SCOPE } from './types';
 
 export interface CollectOptions {
@@ -110,6 +111,8 @@ export function collect(options: CollectOptions): Collection {
     }
   }
 
+  applyOverrides(assets, scopes);
+
   // One central pass for timestamps rather than a stat at every construction site.
   for (const asset of assets) {
     asset.modified = asset.placeholder ? undefined : mtime(asset.sourcePath);
@@ -149,6 +152,11 @@ function pluginAsset(plugin: PluginInstall, scope: Scope): Asset {
     scope,
     sourcePath: manifest ?? plugin.installPath,
     enabled: plugin.enabled,
+    toggle: {
+      file: path.join(userClaudeDir(), 'settings.json'),
+      target: 'plugin',
+      key: plugin.marketplace ? `${plugin.name}@${plugin.marketplace}` : plugin.name,
+    },
     docs: 'https://code.claude.com/docs/en/plugins',
     detail: {
       Marketplace: plugin.marketplace,

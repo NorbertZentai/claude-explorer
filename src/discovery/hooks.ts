@@ -99,6 +99,7 @@ function flatten(
           sourcePath: script && isFile(script) ? script : file,
           line: script && isFile(script) ? undefined : findLine(text, command.slice(0, 40)),
           detail,
+          hook: { event, matcher: matcher.matcher, command },
           problem:
             script && !isFile(script)
               ? `Script not found: ${script}`

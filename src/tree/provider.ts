@@ -1,9 +1,14 @@
 import * as vscode from 'vscode';
+import { McpMeasurements } from '../analysis/contextBudget';
 import { collect, Collection } from '../discovery';
 import { samePath } from '../discovery/scopes';
-import { Asset, ASSET_LABELS, ASSET_ORDER, ScopeKind } from '../discovery/types';
+import { Asset, ASSET_LABELS, ASSET_ORDER, AssetKind, ScopeKind } from '../discovery/types';
 import { AccountNode, AssetNode, GroupNode, MessageNode, Node } from './nodes';
-import { KIND_GROUP_ICONS, toneIcon } from './style';
+import { isEditingAllowed, KIND_GROUP_ICONS, toneIcon } from './style';
+import { CREATABLE_KINDS } from '../edit/templates';
+import { surfaceDirs } from '../discovery/surfaces';
+import { userClaudeDir } from '../discovery/scopes';
+import { isDir } from '../util/fs';
 
 export type Grouping = 'scope' | 'type';
 
@@ -49,6 +54,7 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
     inherited: [],
   };
   private roots: Node[] = [];
+  private readonly mcpMeasurements = new Map<string, { tools: number; chars: number }>();
   private grouping: Grouping;
   private filterText: string;
 
@@ -197,6 +203,20 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
     return this.filterText;
   }
 
+  getCollection(): Collection {
+    return this.collection;
+  }
+
+  /** MCP tool definitions measured this session; they last until the window reloads. */
+  getMcpMeasurements(): McpMeasurements {
+    return this.mcpMeasurements;
+  }
+
+  recordMcpMeasurement(key: string, value: { tools: number; chars: number }): void {
+    this.mcpMeasurements.set(key, value);
+    this.rebuild(); // the Overview listens to the tree and re-renders with the new row
+  }
+
   problems(): Asset[] {
     return this.collection.assets.filter((a) => a.problem !== undefined);
   }
@@ -276,11 +296,15 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
 
     for (const kind of SCOPE_ORDER) {
       const inScope = assets.filter((a) => a.scope.kind === kind);
-      const heading = (children: Node[]): GroupNode =>
-        new GroupNode(SCOPE_HEADINGS[kind], children, SCOPE_ICONS[kind], 0, undefined, {
+      const heading = (children: Node[]): GroupNode => {
+        const node = new GroupNode(SCOPE_HEADINGS[kind], children, SCOPE_ICONS[kind], 0, undefined, {
           type: 'scope',
           scope: kind,
         });
+        node.reportTarget = { kind };
+        node.contextValue = 'group exportable';
+        return node;
+      };
 
       // Workspace is always rendered even when empty, because it carries the "attach a
       // folder" action -- an action you cannot reach is not an action. System is always
@@ -324,7 +348,7 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
 
       const root = heading(children);
       if (kind === 'workspace') {
-        root.contextValue = 'workspaceGroup';
+        root.contextValue = 'workspaceGroup exportable';
       }
       out.push(root);
     }
@@ -348,7 +372,14 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
 
       const node = new GroupNode(scope.label, this.typeGroups(list, false, 2), 'folder', 1);
       node.scopeRoot = scope.root;
-      node.contextValue = scope.attached ? 'attachedScope' : 'openScope';
+      node.contextValue = [
+        scope.attached ? 'attachedScope' : 'openScope',
+        'exportable',
+        scope.hasConfigDir === false && isEditingAllowed() ? 'noClaudeDir' : '',
+      ]
+        .filter(Boolean)
+        .join(' ');
+      node.reportTarget = { kind: 'workspace', root: scope.root };
 
       const tags: string[] = [];
       if (list.length === 0) {
@@ -376,7 +407,12 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
     }
     return [...byLabel.entries()]
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([label, list]) => new GroupNode(label, this.typeGroups(list, false, 2), 'extensions', 1));
+      .map(([label, list]) => {
+        const node = new GroupNode(label, this.typeGroups(list, false, 2), 'extensions', 1);
+        node.contextValue = 'group exportable';
+        node.reportTarget = { kind: 'plugin', root: list[0].scope.root };
+        return node;
+      });
   }
 
   /** All skills together, all hooks together, with a scope badge on every row. */
@@ -401,7 +437,23 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
       // Lets the row carry a "what is this for?" action without stealing the click,
       // which has to keep meaning expand/collapse.
       group.assetKind = kind;
-      group.contextValue = 'typeGroup';
+      group.folders = foldersFor(kind, inKind);
+      const roots = new Set(inKind.map((a) => a.scope.root));
+      const scope = inKind[0].scope;
+      if (roots.size === 1 && (scope.kind === 'user' || scope.kind === 'workspace')) {
+        group.createTarget = { scope, base: scope.kind === 'user' ? userClaudeDir() : scope.root };
+      }
+      // In Group by Type the "+" asks where; under Plugins or System there is no "+".
+      const creatable = CREATABLE_KINDS.has(kind) && isEditingAllowed() && (group.createTarget !== undefined || showScope);
+      // `typeGroup kind-<kind>` so menus can target e.g. only the Hooks group.
+      group.contextValue = [
+        'typeGroup',
+        `kind-${kind}`,
+        group.folders.length > 0 ? 'folders' : '',
+        creatable ? 'creatable' : '',
+      ]
+        .filter(Boolean)
+        .join(' ');
       out.push(group);
     }
     return out;
@@ -467,4 +519,21 @@ function byProblemThenName(a: Asset, b: Asset): number {
   const aBad = a.problem ? 0 : 1;
   const bBad = b.problem ? 0 : 1;
   return aBad !== bBad ? aBad - bBad : a.name.localeCompare(b.name);
+}
+
+/** The existing directories a group of one kind lives in, across the scopes present. */
+function foldersFor(kind: AssetKind, assets: readonly Asset[]): string[] {
+  const out = new Set<string>();
+  for (const asset of assets) {
+    if (asset.placeholder || asset.scope.kind === 'system') {
+      continue;
+    }
+    const base = asset.scope.kind === 'user' ? userClaudeDir() : asset.scope.root;
+    for (const dir of surfaceDirs(kind, asset.scope.kind, base)) {
+      if (isDir(dir)) {
+        out.add(dir);
+      }
+    }
+  }
+  return [...out].sort();
 }

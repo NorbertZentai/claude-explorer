@@ -69,6 +69,50 @@ export interface Asset {
   placeholder?: boolean;
   /** Official documentation URL for the surface this asset belongs to. */
   docs?: string;
+  /**
+   * Set when another asset with the same name wins in a Claude Code session, so this one
+   * never runs there. Filled by analysis/overrides.ts; not a problem, just not in effect.
+   */
+  overriddenBy?: Override;
+  /**
+   * Where this asset's on/off switch lives, when flipping it is a documented setting.
+   * Absent for everything that cannot be toggled from here.
+   */
+  toggle?: Toggle;
+  /** Structured hook declaration, so the timeline does not re-parse `detail` strings. */
+  hook?: HookDeclaration;
+}
+
+export interface Override {
+  /** The winning asset's name and scope, for display. */
+  name: string;
+  scopeLabel: string;
+  sourcePath: string;
+  /** One sentence on which documented rule applied, and where. */
+  reason: string;
+  /**
+   * False when this asset loses only in some projects -- a user skill shadowed by one
+   * repo's skill of the same name still runs everywhere else.
+   */
+  everywhere: boolean;
+  /** Roots of the projects where it loses, when not everywhere. */
+  inRoots?: string[];
+}
+
+export interface Toggle {
+  /** The settings file that holds the switch. */
+  file: string;
+  target: 'plugin' | 'mcp';
+  /** `name@marketplace` for a plugin; the server name for an MCP server. */
+  key: string;
+}
+
+export interface HookDeclaration {
+  event: string;
+  /** Undefined when the matcher was omitted, which matches everything. */
+  matcher?: string;
+  /** As written in the file. Redact before display. */
+  command: string;
 }
 
 export const ASSET_LABELS: Record<AssetKind, string> = {

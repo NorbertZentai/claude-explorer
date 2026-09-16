@@ -8,7 +8,8 @@ import { AssetKind, ScopeKind } from '../discovery/types';
  * per-theme defaults (dark, light, high contrast), so users can retune them in `workbench.colorCustomizations`.
  */
 
-export const DECORATION_SCHEME = 'claude-explorer';
+// Distinct from the `claude-explorer` scheme the guide documents are served under.
+export const DECORATION_SCHEME = 'claude-explorer-tone';
 
 export const KIND_ICONS: Record<AssetKind, string> = {
   policy: 'law',
@@ -55,6 +56,11 @@ export type Tone =
   | { type: 'problem' }
   | { type: 'muted' }
   | { type: 'plain' };
+
+/** Off means the extension never writes a file: the enable/disable actions disappear. */
+export function isEditingAllowed(): boolean {
+  return vscode.workspace.getConfiguration('claudeExplorer').get<boolean>('allowEditing', true);
+}
 
 export function isColorful(): boolean {
   return vscode.workspace.getConfiguration('claudeExplorer').get<boolean>('colorful', true);
