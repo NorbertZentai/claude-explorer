@@ -335,12 +335,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/CHANGE-ME/claude-explorer.git"
+    "url": "https://github.com/NorbertZentai/claude-explorer.git"
   },
   "bugs": {
-    "url": "https://github.com/CHANGE-ME/claude-explorer/issues"
+    "url": "https://github.com/NorbertZentai/claude-explorer/issues"
   },
-  "homepage": "https://github.com/CHANGE-ME/claude-explorer#readme",
+  "homepage": "https://github.com/NorbertZentai/claude-explorer#readme",
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": true
