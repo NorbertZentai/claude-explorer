@@ -3,8 +3,11 @@
   "displayName": "Claude Explorer",
   "description": "Browse every Claude Code skill, command, subagent, hook, MCP server, plugin and setting on your machine. Unofficial, read-only, no account or network required.",
   "version": "3.0.0",
-  "publisher": "CHANGE-ME-BEFORE-PUBLISHING",
-  "license": "MIT",
+  "publisher": "semaxien",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NorbertZentai/claude-explorer.git"
+  },
   "engines": {
     "vscode": "^1.90.0"
   },
