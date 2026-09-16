@@ -75,6 +75,7 @@ scopes. Anything else you want to see, you attach explicitly.
 | Setting | Default | Meaning |
 |---|---|---|
 | `claudeExplorer.defaultGrouping` | `scope` | Grouping on first open |
+| `claudeExplorer.colorful` | `true` | Soft tint on scope headings and type group icons |
 | `claudeExplorer.showUnusedSurfaces` | `true` | Greyed rows for surfaces you have not configured |
 | `claudeExplorer.showPluginProvided` | `true` | Include plugin-provided assets |
 | `claudeExplorer.extraProjectPaths` | `[]` | Extra folders, merged with the ones attached via `+` |

@@ -2,7 +2,7 @@
   "name": "explorer-for-claude-code",
   "displayName": "Explorer for Claude Code",
   "description": "Browse every Claude Code skill, command, subagent, hook, MCP server, plugin and setting on your machine. Unofficial, read-only, no account or network required.",
-  "version": "3.0.0",
+  "version": "0.1.0",
   "publisher": "semaxien",
   "license": "MIT",
   "pricing": "Free",
@@ -247,6 +247,33 @@
         }
       ]
     },
+    "colors": [
+      {
+        "id": "claudeExplorer.scope.system",
+        "description": "Tint for the System heading in Explorer for Claude Code.",
+        "defaults": { "dark": "#E38B84", "light": "#B5473F", "highContrast": "#FF9E96", "highContrastLight": "#9E2F27" }
+      },
+      {
+        "id": "claudeExplorer.scope.user",
+        "description": "Tint for the User heading in Explorer for Claude Code.",
+        "defaults": { "dark": "#7FB3E6", "light": "#2F6DB0", "highContrast": "#8CC8FF", "highContrastLight": "#1F5594" }
+      },
+      {
+        "id": "claudeExplorer.scope.plugin",
+        "description": "Tint for the Plugins heading in Explorer for Claude Code.",
+        "defaults": { "dark": "#B69AE0", "light": "#7A52B8", "highContrast": "#CDB0FF", "highContrastLight": "#5E3A99" }
+      },
+      {
+        "id": "claudeExplorer.scope.workspace",
+        "description": "Tint for the Workspace heading in Explorer for Claude Code.",
+        "defaults": { "dark": "#86C48E", "light": "#3C8A48", "highContrast": "#9BE0A4", "highContrastLight": "#256B31" }
+      },
+      {
+        "id": "claudeExplorer.groupIcon",
+        "description": "Muted icon colour for type groups (Skills, Hooks, …) in Explorer for Claude Code.",
+        "defaults": { "dark": "#8FA6BF", "light": "#5A7089", "highContrast": "#A9C0D8", "highContrastLight": "#3E536B" }
+      }
+    ],
     "configuration": {
       "title": "Explorer for Claude Code",
       "properties": {
@@ -260,6 +287,13 @@
           "markdownDescription": "How to group the tree on first open. 'scope' separates User, Plugins and Workspace; 'type' puts all skills together, all hooks together, and so on.",
           "scope": "window",
           "order": 10
+        },
+        "claudeExplorer.colorful": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Softly tint the scope headings and type group icons. Turn off for a monochrome tree; problems and unused surfaces stay highlighted either way. The tints themselves can be changed in `workbench.colorCustomizations` (`claudeExplorer.scope.*`, `claudeExplorer.groupIcon`).",
+          "scope": "window",
+          "order": 15
         },
         "claudeExplorer.showPluginProvided": {
           "type": "boolean",

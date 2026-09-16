@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
 import { collect, Collection } from '../discovery';
 import { samePath } from '../discovery/scopes';
-import { Asset, ASSET_LABELS, ASSET_ORDER, AssetKind, ScopeKind } from '../discovery/types';
+import { Asset, ASSET_LABELS, ASSET_ORDER, ScopeKind } from '../discovery/types';
 import { AccountNode, AssetNode, GroupNode, MessageNode, Node } from './nodes';
+import { KIND_GROUP_ICONS, toneIcon } from './style';
 
 export type Grouping = 'scope' | 'type';
 
@@ -172,6 +173,11 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
     this.rebuild();
   }
 
+  /** Rebuild from the last scan, e.g. after the colour setting changes. */
+  restyle(): void {
+    this.rebuild();
+  }
+
   getGrouping(): Grouping {
     return this.grouping;
   }
@@ -270,6 +276,11 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
 
     for (const kind of SCOPE_ORDER) {
       const inScope = assets.filter((a) => a.scope.kind === kind);
+      const heading = (children: Node[]): GroupNode =>
+        new GroupNode(SCOPE_HEADINGS[kind], children, SCOPE_ICONS[kind], 0, undefined, {
+          type: 'scope',
+          scope: kind,
+        });
 
       // Workspace is always rendered even when empty, because it carries the "attach a
       // folder" action -- an action you cannot reach is not an action. System is always
@@ -283,12 +294,12 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
           inScope.length > 0
             ? this.typeGroups(inScope, false, 1)
             : [new MessageNode('No administrator or organization policy on this machine', 'check')];
-        out.push(new GroupNode(SCOPE_HEADINGS[kind], children, SCOPE_ICONS[kind], 0));
+        out.push(heading(children));
         continue;
       }
 
       if (kind === 'user') {
-        out.push(new GroupNode(SCOPE_HEADINGS[kind], this.typeGroups(inScope, false, 1), SCOPE_ICONS[kind], 0));
+        out.push(heading(this.typeGroups(inScope, false, 1)));
         continue;
       }
 
@@ -311,7 +322,7 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
         );
       }
 
-      const root = new GroupNode(SCOPE_HEADINGS[kind], children, SCOPE_ICONS[kind], 0);
+      const root = heading(children);
       if (kind === 'workspace') {
         root.contextValue = 'workspaceGroup';
       }
@@ -342,10 +353,7 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
       const tags: string[] = [];
       if (list.length === 0) {
         tags.push(scope.hasConfigDir ? 'no assets' : 'no .claude yet');
-        node.iconPath = new vscode.ThemeIcon(
-          'folder',
-          new vscode.ThemeColor('disabledForeground'),
-        );
+        node.iconPath = toneIcon('folder', { type: 'muted' });
       }
       if (scope.attached) {
         tags.push('attached');
@@ -387,7 +395,9 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
         .slice()
         .sort(byProblemThenName)
         .map((a) => new AssetNode(a, showScope));
-      const group = new GroupNode(ASSET_LABELS[kind], nodes, iconForKind(kind), depth);
+      const group = new GroupNode(ASSET_LABELS[kind], nodes, KIND_GROUP_ICONS[kind], depth, undefined, {
+        type: 'group',
+      });
       // Lets the row carry a "what is this for?" action without stealing the click,
       // which has to keep meaning expand/collapse.
       group.assetKind = kind;
@@ -457,26 +467,4 @@ function byProblemThenName(a: Asset, b: Asset): number {
   const aBad = a.problem ? 0 : 1;
   const bBad = b.problem ? 0 : 1;
   return aBad !== bBad ? aBad - bBad : a.name.localeCompare(b.name);
-}
-
-function iconForKind(kind: AssetKind): string {
-  const icons: Record<AssetKind, string> = {
-    policy: 'law',
-    setting: 'settings-gear',
-    skill: 'lightbulb',
-    command: 'terminal',
-    agent: 'organization',
-    rule: 'checklist',
-    outputStyle: 'paintcan',
-    theme: 'color-mode',
-    workflow: 'run-all',
-    hook: 'plug',
-    mcp: 'server',
-    lsp: 'symbol-namespace',
-    plugin: 'extensions',
-    keybinding: 'keyboard',
-    plan: 'notebook',
-    memory: 'book',
-  };
-  return icons[kind];
 }

@@ -1,25 +1,7 @@
 import * as vscode from 'vscode';
 import { Account } from '../discovery/account';
 import { Asset, AssetKind } from '../discovery/types';
-
-const ICONS: Record<AssetKind, string> = {
-  policy: 'law',
-  setting: 'settings-gear',
-  skill: 'lightbulb',
-  command: 'terminal',
-  agent: 'person',
-  rule: 'checklist',
-  outputStyle: 'paintcan',
-  theme: 'color-mode',
-  workflow: 'run-all',
-  hook: 'plug',
-  mcp: 'server-process',
-  lsp: 'symbol-namespace',
-  plugin: 'extensions',
-  keybinding: 'keyboard',
-  plan: 'notebook',
-  memory: 'book',
-};
+import { KIND_ICONS, Tone, toneIcon, toneUri } from './style';
 
 export type Node = GroupNode | AssetNode | MessageNode | AccountNode;
 
@@ -38,6 +20,8 @@ export class GroupNode extends vscode.TreeItem {
      *  level rather than dumping the whole tree at once. */
     depth: number,
     description?: string,
+    /** Tints the icon and, for a heading, the label text. */
+    tone: Tone = { type: 'plain' },
   ) {
     super(
       label,
@@ -47,9 +31,14 @@ export class GroupNode extends vscode.TreeItem {
           ? vscode.TreeItemCollapsibleState.Expanded
           : vscode.TreeItemCollapsibleState.Collapsed,
     );
-    this.iconPath = new vscode.ThemeIcon(icon);
+    this.iconPath = toneIcon(icon, tone);
     this.description = description ?? `${countAssets(children)}`;
     this.contextValue = 'group';
+    this.resourceUri = toneUri(tone);
+    if (this.resourceUri) {
+      // Without a tooltip VS Code would hover the decoration URI's path.
+      this.tooltip = label;
+    }
   }
 }
 
@@ -62,27 +51,24 @@ export class AssetNode extends vscode.TreeItem {
     const badge = showScope ? `[${asset.scope.label}] ` : '';
     this.description = `${badge}${asset.description ?? ''}`.trim();
     this.tooltip = buildTooltip(asset);
-    this.resourceUri = vscode.Uri.file(asset.sourcePath);
 
+    // Rows stay uncoloured; only the ones that need attention are tinted.
+    let tone: Tone;
+    let icon = KIND_ICONS[asset.kind];
     if (asset.placeholder) {
       // Deliberately dim and non-actionable-looking: it is a signpost, not content.
-      this.iconPath = new vscode.ThemeIcon(
-        'circle-outline',
-        new vscode.ThemeColor('disabledForeground'),
-      );
+      tone = { type: 'muted' };
+      icon = 'circle-outline';
     } else if (asset.problem) {
-      this.iconPath = new vscode.ThemeIcon(
-        'warning',
-        new vscode.ThemeColor('list.warningForeground'),
-      );
+      tone = { type: 'problem' };
+      icon = 'warning';
     } else if (asset.enabled === false) {
-      this.iconPath = new vscode.ThemeIcon(
-        ICONS[asset.kind],
-        new vscode.ThemeColor('disabledForeground'),
-      );
+      tone = { type: 'muted' };
     } else {
-      this.iconPath = new vscode.ThemeIcon(ICONS[asset.kind]);
+      tone = { type: 'plain' };
     }
+    this.iconPath = toneIcon(icon, tone);
+    this.resourceUri = toneUri(tone);
 
     const flags = [asset.placeholder ? 'placeholder' : 'openable'];
     if (asset.invocation) {

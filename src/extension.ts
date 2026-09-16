@@ -4,6 +4,7 @@ import { AssetKind } from './discovery/types';
 import { GUIDES, renderGuide } from './guides';
 import { AssetNode, GroupNode } from './tree/nodes';
 import { ClaudeTreeProvider, Grouping } from './tree/provider';
+import { ToneDecorationProvider } from './tree/style';
 
 export function activate(context: vscode.ExtensionContext): void {
   const config = vscode.workspace.getConfiguration('claudeExplorer');
@@ -26,6 +27,10 @@ export function activate(context: vscode.ExtensionContext): void {
     showCollapseAll: true,
   });
   context.subscriptions.push(view);
+
+  // Tints group headings and flagged rows; see tree/style.ts.
+  const decorations = new ToneDecorationProvider();
+  context.subscriptions.push(decorations, vscode.window.registerFileDecorationProvider(decorations));
 
   // Remember what is open so a rescan can put it back exactly as it was.
   context.subscriptions.push(
@@ -226,6 +231,12 @@ ${uri.path}`;
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(() => provider.refresh()),
     vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration('claudeExplorer.colorful')) {
+        // Nothing on disk changed, so a rescan would find the same fingerprint and skip
+        // the rebuild; icons are baked into the rows and need one.
+        decorations.refresh();
+        provider.restyle();
+      }
       if (e.affectsConfiguration('claudeExplorer')) {
         provider.refresh();
       }

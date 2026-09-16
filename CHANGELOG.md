@@ -4,48 +4,22 @@ All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.0.0] — 2026-09-16
+## [0.1.0] — Unreleased
 
-First release prepared for public use. The scoping rule changed in a way that will be
-visible immediately, hence the major version.
+Initial version.
 
-### Changed
+### Added
 
-- Renamed to **Explorer for Claude Code** (extension ID `semaxien.explorer-for-claude-code`).
-  Command and setting IDs (`claudeExplorer.*`) are unchanged.
-- **A scope is the folder you opened, and nothing else.** Previously the extension walked
-  up to the outermost enclosing `.claude/` and then listed every sibling that looked like a
-  project — opening one repo inside a monorepo showed all of them. Extra folders are now
-  added explicitly with the **+** button and remembered per workspace.
-- Configuration inherited from parent folders is reported as a note instead of inventing
-  scopes for it.
-- Removed the `Tools` surface, which scanned `~/.claude/tools/*.py` — a personal
-  convention, not a Claude Code concept.
-
-### Fixed
-
-- A malformed configuration file could throw during discovery and leave the tree
-  **permanently empty with no error shown**. Failures now render as a row and the previous
-  result is kept.
-- A UTF-8 BOM — which PowerShell redirection and Notepad write by default — made valid
-  `settings.json` report as invalid, silently emptied the plugin list, and showed
-  "not signed in" while signed in.
-- `CLAUDE_CONFIG_DIR` was ignored, so anyone relocating `~/.claude` saw an empty User scope.
-- `enableAllProjectMcpServers` and `disabledMcpjsonServers` were not considered, so every
-  project MCP server was permanently flagged as unapproved.
-- Hook commands written with `~` reported "script not found" for scripts that exist.
-- Skills with a description in the body rather than the frontmatter were wrongly flagged.
-- Auto-memory rows named after hyphenated projects were truncated (`claude-explorer` showed
-  as "explorer").
-- Paths are compared case-insensitively only on Windows; on Linux and macOS two directories
-  differing only in case are no longer merged.
-- The last-modified date is now actually rendered in tooltips. It was computed but never
-  displayed.
-- Malformed JSON of the wrong *shape* (an object where an array belongs) is skipped instead
-  of throwing.
-
-## [2.x] — 2026-09-16
-
-Internal iterations: the surface catalogue, per-surface guides, Plans as a first-class
-surface, the system/policy scope, placeholders for unused surfaces, and non-destructive
-refresh with preserved expansion state.
+- Read-only sidebar listing Claude Code configuration across the System, User, Plugins and
+  Workspace scopes: policy, settings, skills, commands, subagents, rules, hooks, MCP and LSP
+  servers, output styles, themes, workflows, keybindings, plugins, plans and memory.
+- Greyed placeholders for surfaces a scope supports but has nothing configured for
+  (`claudeExplorer.showUnusedSurfaces`).
+- Problem detection: unapproved or stale MCP approvals, hooks pointing at missing scripts,
+  installed-but-disabled plugins, plans about to be auto-deleted, skills without a
+  description, and settings files that are not valid strict JSON.
+- Per-surface guides with a paste-ready setup prompt.
+- Grouping by scope or by type, filtering, and attaching extra project folders.
+- Soft tints on scope headings and type group icons (`claudeExplorer.colorful`), adjustable via
+  `workbench.colorCustomizations`.
+- Automatic refresh on file change that keeps the expanded state.
