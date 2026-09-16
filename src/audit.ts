@@ -7,6 +7,15 @@
  * regression check -- if the counts move, something changed.
  */
 import { estimateBudget } from './analysis/contextBudget';
+import { estimateCost, formatUsd, pickModel } from './analysis/cost';
+import { findCleanupCandidates } from './analysis/cleanup';
+import { dependenciesOf } from './analysis/dependencies';
+import { evaluate } from './analysis/permissionMatch';
+import { suggestOptimizations } from './analysis/optimizer';
+import { recentChanges } from './analysis/recent';
+import { readUsage } from './analysis/usage';
+import { securityReport } from './analysis/security';
+import { userClaudeDir } from './discovery/scopes';
 import { effectiveSettings } from './analysis/effectiveSettings';
 import { hookTimeline } from './analysis/hookTimeline';
 import { renderReport } from './analysis/report';
@@ -19,7 +28,11 @@ import { Asset, ASSET_ORDER, ASSET_LABELS } from './discovery/types';
 // `node dist/audit.js <open folder...> --attach <folder...>`
 const argv = process.argv.slice(2);
 const split = argv.indexOf('--attach');
-const folders = (split === -1 ? argv : argv.slice(0, split)).filter((a) => !a.startsWith('--'));
+// Flags that take a value; the value is not a folder.
+const VALUE_FLAGS = new Set(['--kind', '--guide', '--report', '--permission']);
+const folders = (split === -1 ? argv : argv.slice(0, split)).filter(
+  (a, i, list) => !a.startsWith('--') && !VALUE_FLAGS.has(list[i - 1]),
+);
 const attached = split === -1 ? [] : argv.slice(split + 1);
 
 const { assets, scopes, note, account } = collect({
@@ -135,6 +148,38 @@ for (const session of sessions.length > 0 ? sessions : [undefined]) {
   console.log(`  not measured: ${report.unmeasured.join('; ')}`);
 
   const settings = effectiveSettings(session?.root);
+  const effectiveModel = settings.entries.find((e) => e.keyPath === 'model' && e.status === 'effective')?.value;
+  const picked = pickModel('auto', effectiveModel);
+  const cost = estimateCost(report.totalTokens, picked.model, picked.basis);
+  // `--usage` reads local transcripts (names and dates only) for the unused-skill suggestions.
+  const usage = argv.includes('--usage') ? readUsage(userClaudeDir(), Date.now()) : undefined;
+  for (const sug of suggestOptimizations(report, assets, usage, Date.now())) {
+    const line = `  suggest: ${sug.title} (≈ -${sug.saving} tokens) -> ${sug.actionLabel}`;
+    settingsRendered.push(line);
+    console.log(line);
+  }
+  if (usage) {
+    console.log(`  usage: ${usage.filesRead} transcripts, ${[...usage.entries.entries()].sort((a, b) => b[1].count - a[1].count).slice(0, 5).map(([k, v]) => `${k}×${v.count}`).join(', ')}`);
+  }
+  console.log(`  cost at ${cost.model.label} (${cost.basis}): first ${formatUsd(cost.firstRequest)}, cached ${formatUsd(cost.cachedRequest)}, uncached ${formatUsd(cost.uncached)}`);
+
+  // `--security` prints the Security section; `--permission "<call>"` tests one call.
+  if (argv.includes('--security') || argv.includes('--permission')) {
+    const sec = securityReport(assets, settings, session?.root);
+    console.log(`\n--- security: ${session?.label ?? 'user only'} ---`);
+    console.log(`  mode: ${sec.mode ? `${sec.mode.value} [${sec.mode.sourceLabel}]` : '(default)'}`);
+    for (const f of sec.findings) {
+      const line = `  ${pad(f.severity, 7)} ${f.title}${f.rule ? ` [${f.rule}]` : ''}\n          ${f.detail}`;
+      settingsRendered.push(line);
+      console.log(line);
+    }
+    console.log(`  rules: ${sec.rules.map((r) => `${r.list}:${r.rule}`).join(', ') || '(none)'}`);
+    const permArg = argv.indexOf('--permission');
+    if (permArg !== -1 && argv[permArg + 1]) {
+      const result = evaluate(argv[permArg + 1], sec.rules, { cwd: session?.root ?? process.cwd(), userClaudeDir: userClaudeDir() });
+      console.log(`  test ${argv[permArg + 1]} -> ${result.decision}: ${result.explanation}`);
+    }
+  }
   settingsRendered.push(...settings.entries.map((e) => `${e.keyPath} ${e.value}`));
   console.log(`\n--- effective settings: ${session?.label ?? 'user only'} ---`);
   console.log(`  layers present: ${settings.layers.filter((l) => l.exists).map((l) => l.label).join(' > ') || '(none)'}`);
@@ -197,6 +242,36 @@ if (argv.includes('--prompts')) {
   console.log(`\n--- prompts ---\n  ${count} prompts generated for ${real.length} items`);
 }
 
+// `--cleanup` lists what Clean Up Configuration would offer; nothing is removed.
+if (argv.includes('--cleanup')) {
+  const candidates = findCleanupCandidates({ assets, scopes, note, account, inherited: [] });
+  console.log(`\n--- cleanup candidates (${candidates.length}, nothing removed) ---`);
+  for (const c of candidates) {
+    const line = `  ${c.preselected ? '[x]' : '[ ]'} ${c.category}: ${c.label} [${c.scopeLabel}]\n        ${c.reason}`;
+    settingsRendered.push(line);
+    console.log(line);
+  }
+}
+
+// `--recent` lists what changed in the last 14 days; `--deps` the hover dependencies.
+if (argv.includes('--recent')) {
+  console.log('\n--- recent changes (14 days) ---');
+  for (const day of recentChanges(assets, Date.now())) {
+    console.log(`  ${day.day}: ${day.assets.map((a) => `${a.kind}:${a.name} [${a.scope.label}]`).join(', ')}`);
+  }
+}
+if (argv.includes('--deps')) {
+  console.log('\n--- dependencies ---');
+  for (const a of assets) {
+    const deps = dependenciesOf(a, assets);
+    if (deps && (deps.tools.length || deps.mcpServers.length || deps.example)) {
+      const line = `  [${a.scope.label}] ${a.name}: tools=${deps.tools.join(',') || '-'} mcp=${deps.mcpServers.join(',') || '-'}${deps.missingMcpServers.length ? ` (not found: ${deps.missingMcpServers.join(',')})` : ''} example=${deps.example ?? '-'}`;
+      settingsRendered.push(line);
+      console.log(line);
+    }
+  }
+}
+
 const problems: Asset[] = assets.filter((a) => a.problem !== undefined);
 console.log(`\n--- problems (${problems.length}) ---`);
 for (const p of problems) {
@@ -205,7 +280,7 @@ for (const p of problems) {
 
 // The point of util/redact.ts is that no value can reach an Asset. Prove it here rather
 // than trusting the call sites: fail loudly if any rendered string looks like a secret.
-const SECRET_SHAPED = /(?:sk|pk|ghp|gho|ocr_live|xox[abps])[-_][A-Za-z0-9_-]{12,}/;
+const SECRET_SHAPED = /(?:sk|pk|ghp|gho|ocr_live|xox[abps])[-_][A-Za-z0-9_-]{12,}|[A-Za-z0-9_-]*(?:password|passwd|secret|token)[A-Za-z0-9_-]*=[^•\s)]/i;
 const leaked = assets.filter((a) =>
   SECRET_SHAPED.test([a.name, a.description ?? '', ...Object.values(a.detail ?? {})].join(' ')),
 );

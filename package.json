@@ -39,6 +39,13 @@
           "icon": "resources/claude.svg",
           "contextualTitle": "Explorer for Claude Code",
           "visibility": "visible"
+        },
+        {
+          "id": "claudeExplorer.snippets",
+          "name": "Snippets",
+          "icon": "resources/claude.svg",
+          "contextualTitle": "Explorer for Claude Code",
+          "visibility": "collapsed"
         }
       ]
     },
@@ -46,6 +53,10 @@
       {
         "view": "claudeExplorer.tree",
         "contents": "No Claude Code configuration found.\n\nUser-level assets are read from your home directory; workspace assets from the open folder's .claude directory.\n\n[Refresh](command:claudeExplorer.refresh)\n\n[Get Started](command:claudeExplorer.openWalkthrough)"
+      },
+      {
+        "view": "claudeExplorer.snippets",
+        "contents": "Keep prompts and instructions you reuse, tag them, and insert them into CLAUDE.md, a rule, or a new Claude Code session.\n\n[New Snippet](command:claudeExplorer.snippet.new)\n\n[Import Snippets…](command:claudeExplorer.snippet.import)"
       }
     ],
     "commands": [
@@ -254,6 +265,168 @@
         "title": "Copy Prompt…",
         "category": "Explorer for Claude Code",
         "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "claudeExplorer.showSecurity",
+        "title": "Show Security Review",
+        "category": "Explorer for Claude Code",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "claudeExplorer.showRecentChanges",
+        "title": "Show Recent Changes",
+        "category": "Explorer for Claude Code",
+        "icon": "$(history)"
+      },
+      {
+        "command": "claudeExplorer.testPermission",
+        "title": "Test a Tool Call Against Permission Rules…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "claudeExplorer.runItem",
+        "title": "Run in Claude Code",
+        "category": "Explorer for Claude Code",
+        "icon": "$(play)"
+      },
+      {
+        "command": "claudeExplorer.runInvocation",
+        "title": "Run Slash Command in Claude Code",
+        "category": "Explorer for Claude Code",
+        "icon": "$(play)"
+      },
+      {
+        "command": "claudeExplorer.assignKeybinding",
+        "title": "Assign Keybinding…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(keyboard)"
+      },
+      {
+        "command": "claudeExplorer.editDescription",
+        "title": "Edit Description…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(pencil)"
+      },
+      {
+        "command": "claudeExplorer.editSetting",
+        "title": "Change Setting…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(pencil)"
+      },
+      {
+        "command": "claudeExplorer.setSkillVisibility",
+        "title": "Set Visibility…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "claudeExplorer.compareWithWinner",
+        "title": "Compare with Overriding Item",
+        "category": "Explorer for Claude Code",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "claudeExplorer.whyNotLoaded",
+        "title": "Why Isn't This in Effect?",
+        "category": "Explorer for Claude Code",
+        "icon": "$(question)"
+      },
+      {
+        "command": "claudeExplorer.cleanup",
+        "title": "Clean Up Configuration…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "claudeExplorer.snippet.new",
+        "title": "New Snippet",
+        "category": "Explorer for Claude Code",
+        "icon": "$(add)"
+      },
+      {
+        "command": "claudeExplorer.snippet.fromSelection",
+        "title": "Save Selection as Snippet",
+        "category": "Explorer for Claude Code",
+        "icon": "$(note)"
+      },
+      {
+        "command": "claudeExplorer.snippet.open",
+        "title": "Edit Snippet Text",
+        "category": "Explorer for Claude Code",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "claudeExplorer.snippet.rename",
+        "title": "Rename Snippet…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(pencil)"
+      },
+      {
+        "command": "claudeExplorer.snippet.tag",
+        "title": "Edit Snippet Tags…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(tag)"
+      },
+      {
+        "command": "claudeExplorer.snippet.delete",
+        "title": "Delete Snippet",
+        "category": "Explorer for Claude Code",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "claudeExplorer.snippet.copy",
+        "title": "Copy Snippet",
+        "category": "Explorer for Claude Code",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "claudeExplorer.snippet.send",
+        "title": "Send Snippet to Claude Code",
+        "category": "Explorer for Claude Code",
+        "icon": "$(play)"
+      },
+      {
+        "command": "claudeExplorer.snippet.insert",
+        "title": "Insert Snippet into CLAUDE.md or Rule…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(insert)"
+      },
+      {
+        "command": "claudeExplorer.snippet.export",
+        "title": "Export Snippets…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(export)"
+      },
+      {
+        "command": "claudeExplorer.snippet.import",
+        "title": "Import Snippets…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "claudeExplorer.setUpWithClaude",
+        "title": "Set Up with Claude Code…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "claudeExplorer.hardenSecurity",
+        "title": "Harden Security with Claude Code…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "claudeExplorer.draftSkill",
+        "title": "Draft a Skill with Claude Code…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "claudeExplorer.personalise",
+        "title": "Personalise Claude Code…",
+        "category": "Explorer for Claude Code",
+        "icon": "$(person)"
       }
     ],
     "menus": {
@@ -287,6 +460,26 @@
           "command": "claudeExplorer.refresh",
           "when": "view == claudeExplorer.tree",
           "group": "navigation@3"
+        },
+        {
+          "command": "claudeExplorer.cleanup",
+          "when": "view == claudeExplorer.tree && config.claudeExplorer.allowEditing",
+          "group": "2_tools@1"
+        },
+        {
+          "command": "claudeExplorer.snippet.new",
+          "when": "view == claudeExplorer.snippets",
+          "group": "navigation@0"
+        },
+        {
+          "command": "claudeExplorer.snippet.import",
+          "when": "view == claudeExplorer.snippets",
+          "group": "1_io@1"
+        },
+        {
+          "command": "claudeExplorer.snippet.export",
+          "when": "view == claudeExplorer.snippets",
+          "group": "1_io@2"
         }
       ],
       "view/item/context": [
@@ -479,6 +672,126 @@
           "command": "claudeExplorer.copyPrompt",
           "when": "view == claudeExplorer.tree && viewItem =~ /\\bopenable\\b/",
           "group": "2_copy@5"
+        },
+        {
+          "command": "claudeExplorer.showSecurity",
+          "when": "view == claudeExplorer.tree && viewItem =~ /kind-(setting|policy|mcp|hook)\\b/ || view == claudeExplorer.tree && viewItem =~ /\\bpermissions\\b/",
+          "group": "0_guide@4"
+        },
+        {
+          "command": "claudeExplorer.runItem",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\brunnable\\b/",
+          "group": "inline@0"
+        },
+        {
+          "command": "claudeExplorer.runItem",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\brunnable\\b/",
+          "group": "0_run@1"
+        },
+        {
+          "command": "claudeExplorer.assignKeybinding",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\brunnable\\b/",
+          "group": "0_run@2"
+        },
+        {
+          "command": "claudeExplorer.editDescription",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bdescribable\\b/",
+          "group": "5_edit@4"
+        },
+        {
+          "command": "claudeExplorer.editSetting",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bsettingEditable\\b/",
+          "group": "inline@2"
+        },
+        {
+          "command": "claudeExplorer.editSetting",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bsettingEditable\\b/",
+          "group": "5_edit@5"
+        },
+        {
+          "command": "claudeExplorer.setSkillVisibility",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bskillVisibility\\b/",
+          "group": "3_toggle@2"
+        },
+        {
+          "command": "claudeExplorer.compareWithWinner",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\boverridden\\b/",
+          "group": "1_open@4"
+        },
+        {
+          "command": "claudeExplorer.whyNotLoaded",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bdiagnosable\\b/",
+          "group": "4_check@0"
+        },
+        {
+          "command": "claudeExplorer.snippet.send",
+          "when": "view == claudeExplorer.snippets && viewItem == snippet",
+          "group": "inline@0"
+        },
+        {
+          "command": "claudeExplorer.snippet.copy",
+          "when": "view == claudeExplorer.snippets && viewItem == snippet",
+          "group": "inline@1"
+        },
+        {
+          "command": "claudeExplorer.snippet.insert",
+          "when": "view == claudeExplorer.snippets && viewItem == snippet",
+          "group": "inline@2"
+        },
+        {
+          "command": "claudeExplorer.snippet.send",
+          "when": "view == claudeExplorer.snippets && viewItem == snippet",
+          "group": "1_use@1"
+        },
+        {
+          "command": "claudeExplorer.snippet.copy",
+          "when": "view == claudeExplorer.snippets && viewItem == snippet",
+          "group": "1_use@2"
+        },
+        {
+          "command": "claudeExplorer.snippet.insert",
+          "when": "view == claudeExplorer.snippets && viewItem == snippet",
+          "group": "1_use@3"
+        },
+        {
+          "command": "claudeExplorer.snippet.open",
+          "when": "view == claudeExplorer.snippets && viewItem == snippet",
+          "group": "2_edit@1"
+        },
+        {
+          "command": "claudeExplorer.snippet.rename",
+          "when": "view == claudeExplorer.snippets && viewItem == snippet",
+          "group": "2_edit@2"
+        },
+        {
+          "command": "claudeExplorer.snippet.tag",
+          "when": "view == claudeExplorer.snippets && viewItem == snippet",
+          "group": "2_edit@3"
+        },
+        {
+          "command": "claudeExplorer.snippet.delete",
+          "when": "view == claudeExplorer.snippets && viewItem == snippet",
+          "group": "9_delete@1"
+        },
+        {
+          "command": "claudeExplorer.setUpWithClaude",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\b(openScope|attachedScope)\\b/",
+          "group": "5_edit@1"
+        },
+        {
+          "command": "claudeExplorer.hardenSecurity",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bpermissions\\b/",
+          "group": "4_check@3"
+        },
+        {
+          "command": "claudeExplorer.draftSkill",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bkind-skill\\b/",
+          "group": "5_edit@1"
+        },
+        {
+          "command": "claudeExplorer.personalise",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\buserScope\\b/",
+          "group": "5_edit@1"
         }
       ],
       "commandPalette": [
@@ -573,6 +886,53 @@
         {
           "command": "claudeExplorer.showGuide",
           "when": "false"
+        },
+        {
+          "command": "claudeExplorer.runItem",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.runInvocation",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.assignKeybinding",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.editDescription",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.setSkillVisibility",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.compareWithWinner",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.whyNotLoaded",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.editSetting",
+          "when": "config.claudeExplorer.allowEditing"
+        },
+        {
+          "command": "claudeExplorer.cleanup",
+          "when": "config.claudeExplorer.allowEditing"
+        },
+        {
+          "command": "claudeExplorer.snippet.insert",
+          "when": "config.claudeExplorer.allowEditing"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "claudeExplorer.snippet.fromSelection",
+          "when": "editorHasSelection",
+          "group": "9_claude@1"
         }
       ]
     },
@@ -695,6 +1055,67 @@
           "markdownDescription": "Show Enable/Disable actions for plugins and project MCP servers. They edit `~/.claude/settings.json` or the project's `.claude/settings.local.json`, always after a confirmation. Turn off and the extension never writes a file.",
           "scope": "window",
           "order": 70
+        },
+        "claudeExplorer.costModel": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "opus-5",
+            "sonnet-5",
+            "haiku-4-5",
+            "fable-5-1"
+          ],
+          "enumDescriptions": [
+            "Use the model set in your Claude Code settings; Claude Opus 5 when none is set.",
+            "Claude Opus 5",
+            "Claude Sonnet 5",
+            "Claude Haiku 4.5",
+            "Claude Fable 5.1"
+          ],
+          "default": "auto",
+          "markdownDescription": "Which model's API list prices the context-budget cost estimate uses. An estimate for comparing setups: subscriptions are not billed per token.",
+          "scope": "window",
+          "order": 80
+        },
+        "claudeExplorer.inputPricePerMTok": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "markdownDescription": "Override the input price in USD per million tokens for the cost estimate, for when list prices change. `0` uses the built-in price list. Cache prices scale with it.",
+          "scope": "window",
+          "order": 81
+        },
+        "claudeExplorer.statusBar": {
+          "type": "string",
+          "enum": [
+            "all",
+            "budget",
+            "off"
+          ],
+          "enumDescriptions": [
+            "Context estimate, problems, MCP servers and a non-default session mode.",
+            "Only the context estimate.",
+            "No status bar items."
+          ],
+          "default": "all",
+          "markdownDescription": "What Explorer for Claude Code shows in the status bar, for the project of the active editor.",
+          "scope": "window",
+          "order": 90
+        },
+        "claudeExplorer.budgetWarnTokens": {
+          "type": "number",
+          "default": 10000,
+          "minimum": 1,
+          "markdownDescription": "Startup context estimate above which the status bar item turns yellow; at twice this value it turns red.",
+          "scope": "window",
+          "order": 91
+        },
+        "claudeExplorer.readTranscriptsForUsage": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Count how often skills, slash commands and subagents were used by reading Claude Code's local transcripts (`~/.claude/projects/*/*.jsonl`, last 90 days), so the context budget can suggest hiding ones you do not use. Only names and dates are kept, in memory; nothing leaves the machine. Off by default because transcripts contain whole conversations.",
+          "scope": "machine",
+          "order": 85
         }
       }
     },

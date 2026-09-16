@@ -2,7 +2,7 @@ import { promises as fsp } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { HOOK_EVENTS } from '../analysis/hookTimeline';
+import { HOOK_EVENTS, TOOL_EVENTS } from '../analysis/hookTimeline';
 import { winnerBetween } from '../analysis/overrides';
 import { userClaudeDir } from '../discovery/scopes';
 import { surfaceDirs } from '../discovery/surfaces';
@@ -41,8 +41,6 @@ interface CreateTarget {
   base: string;
 }
 
-/** Hook events whose matcher is a tool name; the others ignore it. */
-const TOOL_EVENTS = new Set(['PreToolUse', 'PostToolUse', 'PostToolUseFailure', 'PermissionRequest', 'PermissionDenied']);
 
 async function createItem(provider: ClaudeTreeProvider, node: GroupNode | AssetNode | undefined): Promise<void> {
   if (!isEditingAllowed()) {

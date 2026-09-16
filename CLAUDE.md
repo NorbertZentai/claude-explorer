@@ -24,7 +24,7 @@ npx @vscode/vsce package -o <out>.vsix   # runs vscode:prepublish (production bu
 
 ## Architecture
 
-Layering is the main rule: **`src/discovery`, `src/analysis`, `src/edit/*Text.ts`, `src/mcp` and `src/dashboard/render.ts` never import `vscode`.** That is what lets `src/audit.ts` run them in plain Node. `vscode` glue lives in `src/extension.ts`, `src/tree`, `src/commands`, `src/dashboard/panel.ts` and `src/edit/{jsonFile,toggle}.ts`.
+Layering is the main rule: **`src/discovery`, `src/analysis`, `src/edit/*Text.ts`, `src/mcp` and `src/dashboard/render.ts` never import `vscode`.** That is what lets `src/audit.ts` run them in plain Node. `vscode` glue lives in `src/extension.ts`, `src/statusBar.ts`, `src/tree`, `src/commands`, `src/snippets/view.ts`, `src/dashboard/{panel,hookEditor}.ts` and `src/edit/{jsonFile,toggle}.ts`. `src/snippets/store.ts`, `src/util` and `src/prompts.ts` are pure too.
 
 - **Discovery** (`src/discovery/index.ts` → `collect()`) returns a `Collection`: a flat list of `Asset`s (defined in `types.ts`) plus the scopes.
   - Scope kinds, highest precedence first: `system` (managed settings), `user` (`~/.claude` or `CLAUDE_CONFIG_DIR`), `plugin` (from `installed_plugins.json`), `workspace` (one per opened or attached folder; the opened folder is the scope, parents are never walked for scopes).
@@ -47,6 +47,7 @@ Layering is the main rule: **`src/discovery`, `src/analysis`, `src/edit/*Text.ts
 
 - **Secrets:** `env` values and header values never enter an `Asset` or any rendered string. `src/util/redact.ts` is the only path by which env data or command lines reach the screen (`envVarNames`, `redactCommandLine`, `redactValue`, `redactText`). Raw MCP definitions are read on demand with `src/mcp/definition.ts`, used, and dropped. New rendered output should be added to the audit redaction check.
 - **Robustness:** hand-edited JSON of the wrong shape must be skipped, never thrown on; a scan failure renders as a row and keeps the previous tree.
-- **Processes and network:** the only process spawn is `src/mcp/probe.ts` (stdio MCP servers, after confirmation, 20 s timeout). There is no network access, and the README's Privacy section makes promises about both. Update it if that changes.
+- **Processes and network:** the only process spawn is `src/mcp/probe.ts` (stdio MCP servers, after confirmation, 20 s timeout). Starting Claude Code goes only through `sendToClaude()` in `src/commands/runActions.ts`: a visible VS Code terminal, a first-time confirmation, the prompt quoted with `src/util/shell.ts`, and slash-command arguments from keybindings validated against `INVOCATION`. Transcripts are read only by `src/analysis/usage.ts`, only when `claudeExplorer.readTranscriptsForUsage` is on, and only names and dates are kept. There is no network access, and the README's Privacy section makes promises about all of this. Update it if that changes.
+- **Switching things off:** use the documented settings (`enabledPlugins`, `enabledMcpjsonServers`, `skillOverrides`, `claudeMdExcludes`), never renames. `src/discovery/visibility.ts` reads them; the Overview hook editor sends only `<event>-<hook>` indexes, never commands.
 - **Docs:** user-facing changes go in `CHANGELOG.md` (Keep a Changelog). The README's Privacy and Settings tables must match `package.json`.
 - **Publishing:** `.github/workflows/publish.yml` publishes to the VS Code Marketplace and Open VSX on push to `main`, using `--skip-duplicate`. **Bumping `version` in `package.json` is what triggers a release.** Secrets needed: `VSCE_PAT`, `OVSX_PAT`.

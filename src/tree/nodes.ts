@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import { AssetTokens } from '../analysis/contextBudget';
+import { Dependencies } from '../analysis/dependencies';
 import { Account } from '../discovery/account';
 import { ReportTarget } from '../analysis/report';
 import { Asset, AssetKind, Scope } from '../discovery/types';
@@ -7,9 +9,17 @@ import { isEditingAllowed, KIND_ICONS, Tone, toneIcon, toneUri } from './style';
 
 export type Node = GroupNode | AssetNode | MessageNode | AccountNode;
 
+/** Derived facts a row's tooltip shows; computed once per scan by the provider. */
+export interface AssetInsight {
+  tokens?: AssetTokens;
+  dependencies?: Dependencies;
+}
+
 
 /** Kinds that are one file or folder of their own, and so can be copied, renamed, deleted. */
 const FILE_KINDS = new Set<AssetKind>(['skill', 'command', 'agent', 'rule', 'outputStyle', 'workflow', 'theme']);
+/** Kinds "Why Isn't This Loaded?" knows reasons for. */
+const WHY_KINDS = new Set<AssetKind>(['skill', 'command', 'agent', 'rule', 'memory', 'hook', 'mcp']);
 /** Kinds the Overview page has a row for. */
 const DASHBOARD_KINDS = new Set<AssetKind>(['skill', 'command', 'agent', 'rule', 'memory', 'setting', 'hook']);
 
@@ -59,13 +69,19 @@ export class GroupNode extends vscode.TreeItem {
 export class AssetNode extends vscode.TreeItem {
   readonly type = 'asset' as const;
 
-  constructor(readonly asset: Asset, showScope: boolean) {
+  constructor(readonly asset: Asset, showScope: boolean, insight: AssetInsight = {}) {
     super(asset.name, vscode.TreeItemCollapsibleState.None);
 
     const badge = showScope ? `[${asset.scope.label}] ` : '';
     const shadowed = asset.overriddenBy?.everywhere ? 'overridden · ' : '';
-    this.description = `${badge}${shadowed}${asset.description ?? ''}`.trim();
-    this.tooltip = buildTooltip(asset);
+    const off =
+      asset.skillOverride && asset.skillOverride !== 'on'
+        ? `${asset.skillOverride} · `
+        : asset.toggle?.target === 'claudeMd' && asset.enabled === false
+          ? 'excluded · '
+          : '';
+    this.description = `${badge}${shadowed}${off}${asset.description ?? ''}`.trim();
+    this.tooltip = buildTooltip(asset, insight);
 
     // Rows stay uncoloured; only the ones that need attention are tinted.
     let tone: Tone;
@@ -99,6 +115,9 @@ export class AssetNode extends vscode.TreeItem {
     const editing = isEditingAllowed();
     if (asset.toggle && editing) {
       flags.push('togglable', asset.enabled === false ? 'disabled' : 'enabled');
+      if (asset.toggle.target === 'skill') {
+        flags.push('skillVisibility');
+      }
     }
     const ownScope = asset.scope.kind === 'user' || asset.scope.kind === 'workspace';
     if (asset.placeholder && editing && ownScope && CREATABLE_KINDS.has(asset.kind)) {
@@ -124,6 +143,21 @@ export class AssetNode extends vscode.TreeItem {
       }
       if (asset.overriddenBy || asset.problem || DASHBOARD_KINDS.has(asset.kind)) {
         flags.push('dashboardable');
+      }
+      if (asset.overriddenBy) {
+        flags.push('overridden');
+      }
+      if (asset.invocation && /^\/[A-Za-z0-9_][A-Za-z0-9_.:-]*$/.test(asset.invocation) && (asset.kind === 'skill' || asset.kind === 'command')) {
+        flags.push('runnable');
+      }
+      if (editing && (asset.kind === 'skill' || asset.kind === 'command' || asset.kind === 'agent') && (asset.scope.kind === 'user' || asset.scope.kind === 'workspace')) {
+        flags.push('describable');
+      }
+      if (editing && asset.kind === 'setting' && ['model', 'outputStyle', 'permissions'].includes(asset.name)) {
+        flags.push('settingEditable');
+      }
+      if (WHY_KINDS.has(asset.kind)) {
+        flags.push('diagnosable');
       }
     }
     this.contextValue = flags.join(' ');
@@ -206,7 +240,7 @@ export function formatModified(epochMs: number): string {
   return `${stamp} (${days} days ago)`;
 }
 
-function buildTooltip(asset: Asset): vscode.MarkdownString {
+function buildTooltip(asset: Asset, insight: AssetInsight): vscode.MarkdownString {
   const md = new vscode.MarkdownString();
   md.supportThemeIcons = true;
   md.isTrusted = false;
@@ -215,8 +249,38 @@ function buildTooltip(asset: Asset): vscode.MarkdownString {
   if (asset.description) {
     md.appendMarkdown(`${escape(asset.description)}\n\n`);
   }
-  if (asset.invocation) {
+  const deps = insight.dependencies;
+  if (deps?.example) {
+    md.appendMarkdown(`Try it:\n\n`);
+    md.appendCodeblock(deps.example, 'text');
+    if (deps.whenToUse) {
+      md.appendMarkdown(`\n_When to use:_ ${escape(deps.whenToUse)}\n\n`);
+    }
+  } else if (asset.invocation) {
     md.appendMarkdown(`Invoke: \`${asset.invocation}\`\n\n`);
+  }
+  const t = insight.tokens;
+  if (t) {
+    const startup = t.startup > 0 ? `≈ ${formatTokens(t.startup)} tokens at startup` : 'nothing at startup';
+    const whole = asset.kind === 'memory' || (asset.kind === 'rule' && t.startup === t.full) ? '' : ` · whole file ≈ ${formatTokens(t.full)} when used`;
+    md.appendMarkdown(`$(pulse) ${startup}${whole} _(estimate)_\n\n`);
+  }
+  if (asset.skillOverride && asset.skillOverride !== 'on') {
+    md.appendMarkdown(`$(eye-closed) skillOverrides: \`${asset.skillOverride}\`\n\n`);
+  }
+  if (deps) {
+    if (deps.tools.length > 0) {
+      md.appendMarkdown(`- **Needs tools:** ${escape(deps.tools.join(', '))}\n`);
+    }
+    if (deps.mcpServers.length > 0) {
+      md.appendMarkdown(`- **MCP servers:** ${escape(deps.mcpServers.join(', '))}\n`);
+    }
+    if (deps.skills.length > 0) {
+      md.appendMarkdown(`- **Preloads skills:** ${escape(deps.skills.join(', '))}\n`);
+    }
+    if (deps.agent) {
+      md.appendMarkdown(`- **Runs in subagent:** ${escape(deps.agent)}\n`);
+    }
   }
   if (asset.enabled !== undefined) {
     md.appendMarkdown(`State: ${asset.enabled ? 'enabled' : 'not enabled'}\n\n`);
@@ -236,8 +300,17 @@ function buildTooltip(asset: Asset): vscode.MarkdownString {
   if (asset.problem) {
     md.appendMarkdown(`\n$(warning) ${escape(asset.problem)}\n`);
   }
+  if (deps && deps.missingMcpServers.length > 0) {
+    md.appendMarkdown(
+      `\n$(info) No .mcp.json here or in a plugin defines ${escape(deps.missingMcpServers.join(', '))}. Fine if it is a user-level server.\n`,
+    );
+  }
   md.appendMarkdown(`\n\`${escape(asset.sourcePath)}\``);
   return md;
+}
+
+export function formatTokens(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k` : String(n);
 }
 
 /** Tooltips render markdown, and descriptions routinely contain backticks and asterisks. */

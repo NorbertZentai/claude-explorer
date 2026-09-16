@@ -33,7 +33,8 @@ export function describeEnv(env: unknown): string | undefined {
  * credential passed as an argument would not be. Redact anything that looks like one
  * while leaving the readable parts of the command intact.
  */
-const SECRET_ARG = /^(?:[A-Za-z0-9_-]*(?:key|token|secret|password|pwd|credential)[A-Za-z0-9_-]*)=(.+)$/i;
+// The name may follow other text, as in a permission rule: `Bash(PGPASSWORD=… psql:*)`.
+const SECRET_ARG = /^(?:.*[^A-Za-z0-9_-])?(?:[A-Za-z0-9_-]*(?:key|token|secret|password|passwd|pwd|credential)[A-Za-z0-9_-]*)=(.+)$/i;
 const SECRET_LOOKING = /^(?:sk|pk|ghp|gho|xox[abps]|ocr_live|live|api)[-_][A-Za-z0-9_-]{12,}$/i;
 
 export function redactCommandLine(parts: readonly string[]): string {

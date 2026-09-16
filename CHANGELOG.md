@@ -35,8 +35,49 @@ Initial version.
   and Export Report (context menu).
 - New… from a template for skills, commands, subagents, rules, output styles and hooks; Set Up
   Claude Code Here… for projects without `.claude`; Copy Prompt… with item-specific prompts.
+- Context budget counts files pulled in with `@import` (up to four hops), leaves out block-level
+  HTML comments, applies the 25 KB limit of the auto-memory index, skips skills hidden with
+  `skillOverrides` and files excluded with `claudeMdExcludes`, and warns about a `CLAUDE.md` over
+  the documented 200 lines.
+- Cost estimate for the startup context at API list prices (`claudeExplorer.costModel`,
+  `claudeExplorer.inputPricePerMTok`), on the Overview and in the status bar tooltip.
+- Budget suggestions with estimated savings and one action each; with the opt-in
+  `claudeExplorer.readTranscriptsForUsage`, skills unused for 30 days are flagged.
+- Security section on the Overview: risky allow rules, `bypassPermissions`, auto-approved MCP
+  servers, credentials written into `.mcp.json` (names only), network calls in project hooks,
+  missing sandbox and `.env` protection, plus every permission rule in evaluation order.
+- Tool call tester: which permission rule decides `Bash(npm test)` and the like, on the Overview
+  and as Test a Tool Call Against Permission Rules….
+- Recent changes section: configuration modified in the last 14 days, and items new this session.
+- Tooltips show the estimated token cost at startup and when used, required tools and MCP servers,
+  and an example invocation built from `argument-hint`.
+- Status bar items for the active project: context estimate with colour thresholds
+  (`claudeExplorer.budgetWarnTokens`), problems, configured MCP servers, and a non-default
+  permission mode, model or output style (`claudeExplorer.statusBar`).
+- Run in Claude Code (▶) on skills and commands, which starts `claude "/name"` in a new terminal
+  after a confirmation, and Assign Keybinding… to bind it in `keybindings.json`.
+- Edit Description… on skills, commands and subagents, and Change Setting… for `model`,
+  `outputStyle`, `permissions.defaultMode` and `cleanupPeriodDays`.
+- Enable/Disable for skills and commands (`skillOverrides`) and for `CLAUDE.md` files and rules
+  (`claudeMdExcludes`), and Set Visibility… for the `name-only` and `user-invocable-only` states.
+- Compare with Overriding Item, and Why Isn't This in Effect? listing every documented reason.
+- Clean Up Configuration…: hooks with missing scripts, stale MCP approvals, expired plans, empty
+  folders, skill folders without `SKILL.md` and broken symlinks, removed after one confirmation.
+- Hook timeline editing: drag a hook to another event or settings file, Edit… to change its event,
+  matcher or command or delete it, and a tool-name box that highlights the hooks that would fire.
+- Snippets view: tagged prompts and instructions, edited as documents, sent to Claude Code, copied,
+  or inserted into `CLAUDE.md`, `CLAUDE.local.md` and rules; JSON import and export.
+- Prompt-driven setup: Set Up with Claude Code…, Harden Security with Claude Code…, Draft a Skill
+  with Claude Code… and Personalise Claude Code…, each copied or sent to a new session. Copy
+  Prompt… can also send its prompt with the ▶ button.
+- A broken `@import` in a `CLAUDE.md` is reported as a problem.
 
 ### Fixed
+
+- A credential assigned inside a permission rule, such as `Bash(PGPASSWORD=… psql:*)`, was shown
+  unmasked in effective settings; the redaction check now also catches `password=`, `secret=` and
+  `token=` assignments.
+- `npm run audit` treated the value of `--kind`, `--guide` and `--report` as a folder to scan.
 
 - Descriptions written as a plain YAML value wrapped onto indented lines were read as empty, so
   such skills showed their first body line instead.

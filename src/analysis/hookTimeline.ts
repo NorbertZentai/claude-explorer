@@ -69,6 +69,10 @@ export interface TimelineHook {
   problem?: string;
   /** Set when an identical handler in a higher settings file already runs. */
   duplicateOf?: string;
+  /** A user or project settings file declares it, so the Overview may move or edit it. */
+  editable: boolean;
+  /** The raw declaration, for edits. Never rendered: the command may hold a credential. */
+  declaration: { file: string; event: string; matcher?: string; command: string };
 }
 
 export interface TimelineEvent extends HookEventInfo {
@@ -112,6 +116,9 @@ export function hookTimeline(assets: readonly Asset[], workspaceRoot: string | u
       line: asset.line,
       problem: asset.problem,
       duplicateOf,
+      editable:
+        (asset.scope.kind === 'user' || asset.scope.kind === 'workspace') && /settings(\.local)?\.json$/.test(decl.file),
+      declaration: { file: decl.file, event: decl.event, matcher: decl.matcher, command: decl.command },
     });
     byEvent.set(decl.event, list);
   }
@@ -130,6 +137,9 @@ export function hookTimeline(assets: readonly Asset[], workspaceRoot: string | u
   }
   return out;
 }
+
+/** Events whose matcher is a tool name, so "which hooks fire for this tool?" applies. */
+export const TOOL_EVENTS = new Set(['PreToolUse', 'PostToolUse', 'PostToolUseFailure', 'PermissionRequest', 'PermissionDenied']);
 
 const SCOPE_ORDER: Record<Asset['scope']['kind'], number> = { system: 0, workspace: 1, user: 2, plugin: 3 };
 

@@ -52,6 +52,7 @@ Problems sort to the top of their group with a warning icon:
 - a plan-mode file about to be auto-deleted by `cleanupPeriodDays`
 - a skill with no description, which Claude can never trigger
 - a settings file that is not valid strict JSON
+- a `CLAUDE.md` that `@imports` a file that does not exist, or nests imports deeper than four hops
 
 - a skill, command or subagent **overridden** by another with the same name, so it never runs.
   It is dimmed rather than flagged, with the rule that decided it in the tooltip
@@ -63,16 +64,41 @@ overridden, estimated startup tokens) and a count of every type per scope. Then,
 pick:
 
 - **Context budget**: roughly how many tokens of configuration load before your first prompt:
-  every `CLAUDE.md`, always-on rules, and the skill, command and subagent listings. It is an
-  estimate (characters ÷ 4), it flags files that are unusually large and skill descriptions that
+  every `CLAUDE.md` and the files it `@imports`, always-on rules, the first 200 lines or 25 KB of
+  the auto-memory index, and the skill, command and subagent listings. Block-level HTML comments
+  are left out, as Claude Code strips them, and skills hidden with `skillOverrides` or files
+  excluded with `claudeMdExcludes` do not count. It is an estimate (characters ÷ 4), it flags
+  files that are unusually large or over the documented 200 lines and skill descriptions that
   Claude Code truncates, and it says what it cannot measure, such as MCP tool definitions.
+  - **Cost**: what that context costs per request at API list prices for the model in your
+    settings (or `claudeExplorer.costModel`): the first request, which writes the prompt cache,
+    and later ones that read it. A yardstick for comparing setups; subscriptions are not billed
+    per token.
+  - **Suggestions**: concrete savings with the estimated tokens per session and one button each:
+    set a long or unused skill to `name-only`, shorten an oversized `CLAUDE.md` or memory index,
+    move an always-on rule behind `paths:`, fix a truncated description. With
+    `claudeExplorer.readTranscriptsForUsage` on, skills you have not used in 30 days are flagged.
+- **Security**: a review of what sessions in the project may do, with severity: unrestricted
+  `Bash`, wildcards before a subcommand or after a runner such as `npx *`, destructive or network
+  commands allowed, fetching any URL, file access across your home directory,
+  `bypassPermissions` and its skipped warning, auto-approved project MCP servers, credentials
+  written literally into `.mcp.json` (by variable name only), project hooks that call `curl`, no
+  sandbox, no deny rule for `.env`. Below it, every permission rule in evaluation order (deny →
+  ask → allow) with its file, and a **tool call tester**: type `Bash(npm test)` or
+  `Read(src/index.ts)` and see which rule decides it. Also in the Command Palette as *Test a Tool
+  Call Against Permission Rules…*.
 - **Effective settings**: the values a session really uses once managed, project-local, project
   and user settings are merged, with the file each value comes from. Lists such as
   `permissions.allow` are combined; any other value comes from the highest file, and the ones it
   replaces are shown struck through. `env` shows variable names only.
 - **Hook timeline**: every hook that runs in the project, grouped by event in lifecycle order,
   with its matcher, where it is declared, and handlers that run only once because they are
-  declared twice.
+  declared twice. Type a tool name to see which hooks fire for it. **Drag a hook** onto another
+  event, or onto the user, project or project-local settings file, to move it there; **Edit…**
+  changes its event, matcher or command, moves or deletes it. Hooks for one event run in
+  parallel, so there is no order to rearrange within an event.
+- **Recent changes**: configuration files changed in the last 14 days, by day, with items that
+  appeared since this window opened marked as new.
 - **Overrides** and **Problems**, with links to the files.
 
 Every file name on the page opens that file beside the Overview. The page redraws whenever the tree
@@ -80,6 +106,23 @@ does, and follows your theme.
 
 Right-click the Settings, Hooks, Memory, Skills or Rules group in the tree to jump straight to the
 matching section.
+
+## Status bar
+
+For the project of the active editor: the startup context estimate (yellow above
+`claudeExplorer.budgetWarnTokens`, red at twice that; hover for the cost and the largest items),
+the number of problems, the number of configured MCP servers, and the permission mode, model and
+output style a new session starts with when they are not the defaults. Each opens the matching
+view. `claudeExplorer.statusBar` shows all, only the estimate, or nothing.
+
+## Snippets
+
+A second view, **Snippets**, keeps prompts and instructions you reuse, grouped by tag. Save a
+selection from any editor (right-click → *Save Selection as Snippet*), edit a snippet's text in a
+normal editor tab and save, and from its row: **Send to Claude Code** in a new terminal, **Copy**,
+or **Insert into** your user or project `CLAUDE.md`, `CLAUDE.local.md`, an existing rule, or a new
+rule with an optional `paths:` pattern (with the token cost in the confirmation). Import and export
+as JSON. Snippets are stored in VS Code's storage for this extension on this machine.
 
 ## Using it
 
@@ -89,8 +132,10 @@ Click the icon in the activity bar.
   here needs one.
 - **Click** an item to open its source; hooks and MCP servers open at the relevant line. Clicking a
   greyed "none" row opens the guide for that surface instead.
-- **Hover** an item for its description, how to invoke it, its enabled state, details such as tools
-  or matcher, when the file last changed, why it is overridden or broken, and its full path.
+- **Hover** an item for its description, how to invoke it (with its `argument-hint` and
+  `when_to_use`), its estimated token cost at startup and when used, the tools and MCP servers it
+  needs, its enabled state or `skillOverrides` visibility, when the file last changed, why it is
+  overridden or broken, and its full path.
 - **The book icon** on any group opens a guide: what that surface is, where it lives, when it earns
   its place, and a **paste-ready prompt** for setting one up. Right-click for *Copy Setup Prompt*.
 - **The `+` on Workspace** attaches another project folder, remembered per workspace; the **×** on an
@@ -99,25 +144,36 @@ Click the icon in the activity bar.
   Command Palette lists every problem in one searchable list.
 - Refreshes on startup, on file change, and on demand — without ever emptying the view, and keeping
   whatever you had expanded.
-- **Enable or disable** a plugin or a project MCP server with the icon on its row. After a
-  confirmation this edits `enabledPlugins` in `~/.claude/settings.json`, or
-  `enabledMcpjsonServers` / `disabledMcpjsonServers` in the project's `.claude/settings.local.json`.
-  Only that key changes, formatting is kept, and Undo works. Running Claude Code sessions may need a
-  restart to notice.
+- **Enable or disable** with the icon on a row, always through the setting Claude Code documents
+  for it, never by renaming files: a plugin (`enabledPlugins` in `~/.claude/settings.json`), a
+  project MCP server (`enabledMcpjsonServers` / `disabledMcpjsonServers`), your own skills and
+  commands (`skillOverrides`), and `CLAUDE.md` files and rules (`claudeMdExcludes`). Project items
+  are switched in the project's `.claude/settings.local.json`, user items in
+  `~/.claude/settings.json`. **Set Visibility…** on a skill also offers `name-only` and
+  `user-invocable-only`. Only that key changes, formatting is kept, and Undo works. Running Claude
+  Code sessions may need a restart to notice.
+- **Run** (▶) a skill or command: opens a terminal in its project and starts `claude "/deploy"`,
+  asking for arguments when it has an `argument-hint`. **Assign Keybinding…** adds an entry to your
+  VS Code `keybindings.json` that does the same; you type the key and save.
+- **Clean Up Configuration…** (view title menu) lists hooks whose script is gone, approvals for MCP
+  servers that no longer exist, plans past `cleanupPeriodDays`, empty folders, skill folders
+  without `SKILL.md` and broken symlinks. Tick what goes; files move to the Trash and settings edits
+  can be undone.
 - **Get Started** (in the Command Palette) opens a short walkthrough.
 
 ### All actions at a glance
 
 | Where | Actions |
 |---|---|
-| View title bar | Open Overview · Filter… / Clear Filter · Group by Type / Group by Scope · Refresh · Collapse All |
+| View title bar | Open Overview · Filter… / Clear Filter · Group by Type / Group by Scope · Refresh · Collapse All · Clean Up Configuration… |
 | Icons on a type group | New… (`+`, where you can create) · What is this for? (book) · Open Folder |
-| Icons on other rows | Attach Folder (`+` on Workspace) · Detach Folder (× on an attached folder) · Set Up Claude Code Here… (project without `.claude`) · Add Permission Rule… (`permissions` row) · Test MCP Server · Enable / Disable (plugins, project MCP servers) |
-| Right-click an item | Open Source File · Reveal in File Explorer · Show in Overview · Copy Path · Copy Invocation · Copy as @-Reference · Copy Prompt… · Copy claude mcp add Command · Enable / Disable · Check Skill · Test MCP Server · Copy to… · Rename… · Move to Trash |
-| Right-click a type group | What is this for? · Copy Setup Prompt · Show Effective Settings (Settings, Policy) · Show Hook Timeline (Hooks) · Show Context Budget (Memory, Skills, Rules) · Open Folder · New… · Add Permission Rule… (Settings) |
+| Icons on other rows | Run (▶ skills, commands) · Attach Folder (`+` on Workspace) · Detach Folder (× on an attached folder) · Set Up Claude Code Here… (project without `.claude`) · Add Permission Rule… (`permissions` row) · Change Setting… (model, output style, permissions) · Test MCP Server · Enable / Disable (plugins, project MCP servers, skills, commands, CLAUDE.md files, rules) |
+| Right-click an item | Run in Claude Code · Assign Keybinding… · Open Source File · Reveal in File Explorer · Show in Overview · Compare with Overriding Item · Copy Path · Copy Invocation · Copy as @-Reference · Copy Prompt… · Copy claude mcp add Command · Enable / Disable · Set Visibility… · Why Isn't This in Effect? · Check Skill · Test MCP Server · Harden Security with Claude Code… · Edit Description… · Change Setting… · Copy to… · Rename… · Move to Trash |
+| Right-click a type group | What is this for? · Copy Setup Prompt · Show Effective Settings (Settings, Policy) · Show Security Review (Settings, Policy, Hooks, MCP) · Show Hook Timeline (Hooks) · Show Context Budget (Memory, Skills, Rules) · Open Folder · New… · Draft a Skill with Claude Code… (Skills) · Add Permission Rule… (Settings) |
 | Right-click a greyed "none" row | What is this for? · Copy Setup Prompt · New… |
-| Right-click a scope heading, project or plugin | Export Report · Set Up Claude Code Here… · Detach Folder |
-| Command Palette | Open Overview · Show Effective Settings · Show Hook Timeline · Show Context Budget · Show Problems · Attach Folder… · Filter… · Clear Filter · Group by Type / Scope · Refresh · Get Started |
+| Right-click a scope heading, project or plugin | Export Report · Set Up Claude Code Here… · Set Up with Claude Code… (projects) · Personalise Claude Code… (User) · Detach Folder |
+| Snippets view | New Snippet · Import / Export · on a snippet: Send to Claude Code · Copy · Insert into CLAUDE.md or Rule… · Edit Text · Rename · Tags · Delete |
+| Command Palette | Open Overview · Show Effective Settings · Show Hook Timeline · Show Context Budget · Show Security Review · Show Recent Changes · Test a Tool Call Against Permission Rules… · Change Setting… · Clean Up Configuration… · Set Up with Claude Code… · Harden Security with Claude Code… · Draft a Skill with Claude Code… · Personalise Claude Code… · New Snippet · Show Problems · Attach Folder… · Filter… · Clear Filter · Group by Type / Scope · Refresh · Get Started |
 
 Actions that change files appear only while `claudeExplorer.allowEditing` is on.
 
@@ -147,7 +203,16 @@ Right-click a row for:
 - **Copy Prompt…**: a paste-ready prompt about that item, starting with its @-reference: explain
   it, improve a skill's description, review a hook for safety, tighten permissions, shorten a
   `CLAUDE.md` (with its token estimate). On a row with a problem or an override, the first choice
-  is to fix it. Prompts never include command lines or environment values.
+  is to fix it. Enter copies it; the ▶ button starts Claude Code with it. Prompts never include
+  command lines or environment values.
+- **Edit Description…** on your own skills, commands and subagents: change the one-line
+  description in place, with a warning when a skill's listing would be truncated. **Change
+  Setting…** on a `model`, `outputStyle` or `permissions` row does the same for that value.
+- **Compare with Overriding Item** opens a diff against the item that wins over it.
+- **Why Isn't This in Effect?** gathers every documented reason in one list: an override,
+  `skillOverrides`, `claudeMdExcludes`, a `Skill(…)` or `Agent(…)` deny rule,
+  `disable-model-invocation`, `paths:` on a rule, a disabled plugin, `disableAllHooks`, an
+  unapproved MCP server, frontmatter problems.
 - **Copy claude mcp add Command**: recreates the server elsewhere, with every environment and
   header value replaced by a `<value>` placeholder.
 - **Check Skill**: checks a `SKILL.md` against the frontmatter reference: listing length, boolean
@@ -159,6 +224,20 @@ Right-click a row for:
   configuration in a new, unsaved document.
 - **Reveal in File Explorer**, **Copy Path** and, for skills, commands and plugin MCP servers,
   **Copy Invocation** (such as `/deploy` or `/plugin:skill`).
+
+### Setting up with Claude Code
+
+Instead of a template, these hand Claude Code a precise request so it can look at the project
+first. Each can be copied or sent to a new Claude Code session in a terminal:
+
+- **Set Up with Claude Code…** on a project: a `CLAUDE.md` with the build, test and architecture
+  rules, a test-running skill, a formatter hook and permission rules, each shown before writing.
+- **Harden Security with Claude Code…**: tighter permission rules, `.env` and `~/.ssh` denied,
+  network commands blocked in favour of `WebFetch(domain:…)`, and a sandbox network allowlist.
+- **Draft a Skill with Claude Code…** on Skills: give it a name and a sentence about what it
+  should do; the prompt names the exact `SKILL.md` path and the frontmatter rules.
+- **Personalise Claude Code…** on User: tick preferences (short answers, TypeScript, no Tailwind,
+  answer language…) or type your own, merged into `~/.claude/CLAUDE.md`.
 
 ## Colours
 
@@ -194,7 +273,12 @@ scopes. Anything else you want to see, you attach explicitly.
 | `claudeExplorer.extraProjectPaths` | `[]` | Extra folders, merged with the ones attached via `+` |
 | `claudeExplorer.autoRefresh` | `true` | Watch config directories and refresh on change |
 | `claudeExplorer.refreshDebounceMs` | `300` | Coalesce a burst of saves into one rebuild |
-| `claudeExplorer.allowEditing` | `true` | Show actions that change files (new items, set up, enable/disable, permission rules, copy, rename, trash); off means the extension never writes a file |
+| `claudeExplorer.allowEditing` | `true` | Show actions that change files (new items, set up, enable/disable, visibility, descriptions, settings, permission rules, hooks, clean up, snippet inserts, copy, rename, trash); off means the extension never writes configuration |
+| `claudeExplorer.statusBar` | `all` | Status bar items: `all`, `budget` (only the context estimate) or `off` |
+| `claudeExplorer.budgetWarnTokens` | `10000` | Startup context estimate above which the status bar item turns yellow (red at twice this) |
+| `claudeExplorer.costModel` | `auto` | Model whose API list prices the cost estimate uses; `auto` follows `model` in your settings |
+| `claudeExplorer.inputPricePerMTok` | `0` | Override the input price (USD per million tokens) when list prices change; `0` uses the built-in list |
+| `claudeExplorer.readTranscriptsForUsage` | `false` | Count skill, command and subagent use from local transcripts to flag unused skills; names and dates only |
 
 ## Privacy
 
@@ -204,9 +288,20 @@ scopes. Anything else you want to see, you attach explicitly.
 - **Runs a process only on request.** `child_process` is used by one command, Test MCP Server,
   after a confirmation that shows the command line. It starts only stdio servers and stops them
   after they list their tools or after 20 seconds.
-- **Writes only on request.** Enable/disable, adding a permission rule or hook, copy, rename and
-  Move to Trash each ask first; New… and Set Up Claude Code Here… create only what you name or tick. Set `claudeExplorer.allowEditing` to `false` and it never writes a file.
-  Export Report opens an unsaved document and writes nothing.
+- **Starts Claude Code only in a terminal you can see.** Run, keybindings made with Assign
+  Keybinding, Send to Claude Code on a snippet or prompt: each opens a new VS Code terminal and
+  types `claude '<prompt>'` into it. The first time, a confirmation shows the command line; you can
+  choose not to be asked again. A keybinding's `invocation` must be a slash command name, nothing
+  else.
+- **Reads transcripts only if you ask.** With `claudeExplorer.readTranscriptsForUsage` on, local
+  transcripts under `~/.claude/projects/` are scanned for skill, command and subagent names and
+  their dates. No message text is kept, and the counts stay in memory.
+- **Writes only on request.** Enable/disable, visibility, descriptions, settings, adding a
+  permission rule or hook, moving or editing hooks, clean up, inserting a snippet, copy, rename and
+  Move to Trash each ask first; New… and Set Up Claude Code Here… create only what you name or tick.
+  Set `claudeExplorer.allowEditing` to `false` and it never writes configuration. Assign
+  Keybinding edits your open `keybindings.json` but leaves saving to you. Export Report opens an
+  unsaved document and writes nothing. Snippets are saved in VS Code's storage for this extension.
 - **No credential values.** MCP `env` blocks routinely hold API keys. Only variable *names* are ever
   displayed — never a value, not even masked or truncated, because a prefix is still a disclosure.
   One module is the sole path by which env data reaches the screen, and a test fails the build if
@@ -228,7 +323,9 @@ npm run typecheck
 npm run audit      # headless run: counts, overrides, context budget, effective settings,
                    # hook timeline, problems, redaction check
                    # add --lint to check every skill, --report <user|folder> for the export,
-                   # --prompts to generate every Copy Prompt text into the redaction check
+                   # --prompts to generate every Copy Prompt text into the redaction check,
+                   # --security [--permission "Bash(npm test)"], --cleanup (lists only),
+                   # --deps, --recent, --usage (reads local transcripts)
 npm run package    # -> explorer-for-claude-code-<version>.vsix
 ```
 

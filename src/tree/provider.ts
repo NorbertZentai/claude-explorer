@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
-import { McpMeasurements } from '../analysis/contextBudget';
+import { assetTokens, McpMeasurements } from '../analysis/contextBudget';
+import { dependenciesOf } from '../analysis/dependencies';
+import { assetKey } from '../analysis/recent';
 import { collect, Collection } from '../discovery';
 import { samePath } from '../discovery/scopes';
 import { Asset, ASSET_LABELS, ASSET_ORDER, AssetKind, ScopeKind } from '../discovery/types';
-import { AccountNode, AssetNode, GroupNode, MessageNode, Node } from './nodes';
+import { AccountNode, AssetInsight, AssetNode, GroupNode, MessageNode, Node } from './nodes';
 import { isEditingAllowed, KIND_GROUP_ICONS, toneIcon } from './style';
 import { CREATABLE_KINDS } from '../edit/templates';
 import { surfaceDirs } from '../discovery/surfaces';
@@ -55,6 +57,10 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
   };
   private roots: Node[] = [];
   private readonly mcpMeasurements = new Map<string, { tools: number; chars: number }>();
+  /** Tooltip facts per asset of the current collection; reading files once per scan. */
+  private insights = new Map<Asset, AssetInsight>();
+  /** What the first scan of this window found, so later additions can be told apart. */
+  private baseline?: Set<string>;
   private grouping: Grouping;
   private filterText: string;
 
@@ -112,6 +118,8 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
       if (signature !== this.signature) {
         this.signature = signature;
         this.collection = next;
+        this.insights = new Map();
+        this.baseline ??= new Set(next.assets.filter((a) => !a.placeholder).map(assetKey));
         this.error = undefined;
         this.rebuild();
       }
@@ -215,6 +223,24 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
   recordMcpMeasurement(key: string, value: { tools: number; chars: number }): void {
     this.mcpMeasurements.set(key, value);
     this.rebuild(); // the Overview listens to the tree and re-renders with the new row
+  }
+
+  /** Items that were not there when this window first scanned. */
+  newAssetKeys(): Set<string> {
+    const baseline = this.baseline;
+    if (!baseline) {
+      return new Set();
+    }
+    return new Set(this.collection.assets.filter((a) => !a.placeholder).map(assetKey).filter((k) => !baseline.has(k)));
+  }
+
+  insightFor(asset: Asset): AssetInsight {
+    let insight = this.insights.get(asset);
+    if (!insight) {
+      insight = { tokens: assetTokens(asset), dependencies: dependenciesOf(asset, this.collection.assets) };
+      this.insights.set(asset, insight);
+    }
+    return insight;
   }
 
   problems(): Asset[] {
@@ -323,7 +349,9 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
       }
 
       if (kind === 'user') {
-        out.push(heading(this.typeGroups(inScope, false, 1)));
+        const user = heading(this.typeGroups(inScope, false, 1));
+        user.contextValue = 'group exportable userScope';
+        out.push(user);
         continue;
       }
 
@@ -430,7 +458,7 @@ export class ClaudeTreeProvider implements vscode.TreeDataProvider<Node> {
       const nodes = inKind
         .slice()
         .sort(byProblemThenName)
-        .map((a) => new AssetNode(a, showScope));
+        .map((a) => new AssetNode(a, showScope, this.insightFor(a)));
       const group = new GroupNode(ASSET_LABELS[kind], nodes, KIND_GROUP_ICONS[kind], depth, undefined, {
         type: 'group',
       });
@@ -508,7 +536,7 @@ function restoreExpansion(nodes: readonly Node[], expanded: ReadonlySet<string>)
  */
 function fingerprint(collection: Collection): string {
   const assets = collection.assets.map((a) =>
-    [a.kind, a.name, a.scope.root, a.sourcePath, a.modified ?? 0, a.problem ?? '', a.enabled ?? ''].join(''),
+    [a.kind, a.name, a.scope.root, a.sourcePath, a.modified ?? 0, a.problem ?? '', a.enabled ?? '', a.skillOverride ?? ''].join(''),
   );
   const scopes = collection.scopes.map((s) => [s.kind, s.label, s.root, s.hasConfigDir ?? '', s.attached ?? ''].join(''));
   return [collection.account.label, collection.account.signedIn, ...scopes, ...assets].join('');

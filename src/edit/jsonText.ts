@@ -26,6 +26,22 @@ export function appendToList(text: string, jsonPath: string[], item: unknown): s
   return applyEdits(text, modify(text, [...jsonPath, -1], item, { ...formatting(text), isArrayInsertion: true }));
 }
 
+/**
+ * Append to a JSON(C) document whose root is an array, such as VS Code's keybindings.json,
+ * keeping comments. Returns the new text and the offset where the item was inserted.
+ */
+export function appendToRootArray(text: string, item: unknown): { text: string; offset: number } {
+  const base = text.trim() === '' ? '[]' : text;
+  const errors: ParseError[] = [];
+  const parsed = parse(base, errors, { allowTrailingComma: true }) as unknown;
+  if (!Array.isArray(parsed)) {
+    throw new Error('This keybindings file is not a JSON array, so it was left untouched.');
+  }
+  const edits = modify(base, [-1], item, { ...formatting(base), isArrayInsertion: true });
+  const next = applyEdits(base, edits);
+  return { text: next, offset: edits.length > 0 ? edits[0].offset : 0 };
+}
+
 function formatting(text: string): { formattingOptions: { insertSpaces: boolean; tabSize: number } } {
   return { formattingOptions: { insertSpaces: !/\n\t/.test(text), tabSize: indentOf(text) } };
 }

@@ -1,15 +1,23 @@
 import * as vscode from 'vscode';
+import { effectiveSettings } from './analysis/effectiveSettings';
+import { evaluate } from './analysis/permissionMatch';
+import { securityReport } from './analysis/security';
 import { hasClaudeConfig, userClaudeDir } from './discovery/scopes';
 import { AssetKind } from './discovery/types';
 import { GUIDES, renderGuide } from './guides';
 import { registerCreateActions } from './commands/createActions';
 import { registerItemActions } from './commands/itemActions';
+import { registerRunActions } from './commands/runActions';
+import { registerCleanupActions } from './commands/cleanupActions';
+import { registerPromptActions } from './commands/promptActions';
 import { confirm } from './commands/ui';
 import { DashboardPanel } from './dashboard/panel';
 import { setEnabled } from './edit/toggle';
 import { AssetNode, GroupNode } from './tree/nodes';
 import { ClaudeTreeProvider, Grouping } from './tree/provider';
 import { ToneDecorationProvider } from './tree/style';
+import { registerStatusBar } from './statusBar';
+import { registerSnippets } from './snippets/view';
 
 export function activate(context: vscode.ExtensionContext): void {
   const config = vscode.workspace.getConfiguration('claudeExplorer');
@@ -181,6 +189,13 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('claudeExplorer.showContextBudget', () =>
       DashboardPanel.show(context, provider, { section: 'budget' }),
     ),
+    vscode.commands.registerCommand('claudeExplorer.showSecurity', () =>
+      DashboardPanel.show(context, provider, { section: 'security' }),
+    ),
+    vscode.commands.registerCommand('claudeExplorer.showRecentChanges', () =>
+      DashboardPanel.show(context, provider, { section: 'recent' }),
+    ),
+    vscode.commands.registerCommand('claudeExplorer.testPermission', () => testPermission(provider)),
 
     vscode.commands.registerCommand('claudeExplorer.showProblems', async () => {
       const problems = provider.problems();
@@ -255,7 +270,12 @@ ${uri.path}`;
 
   registerItemActions(context, provider);
   registerCreateActions(context, provider);
+  registerRunActions(context, provider);
+  registerCleanupActions(context, provider);
+  registerPromptActions(context, provider);
   registerWatchers(context, provider);
+  registerStatusBar(context, provider);
+  registerSnippets(context, provider);
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(() => provider.refresh()),
@@ -276,23 +296,65 @@ ${uri.path}`;
   provider.refresh();
 }
 
+/** Ask for a tool call and say which permission rule decides it, for one project. */
+async function testPermission(provider: ClaudeTreeProvider): Promise<void> {
+  const projects = provider.getCollection().scopes.filter((s) => s.kind === 'workspace');
+  let root: string | undefined = projects.find((p) => p.primary)?.root ?? projects[0]?.root;
+  if (projects.length > 1) {
+    const picked = await vscode.window.showQuickPick(
+      projects.map((p) => ({ label: p.label, description: p.root, root: p.root })),
+      { title: 'Test permissions for which project?' },
+    );
+    if (!picked) {
+      return;
+    }
+    root = picked.root;
+  }
+  const call = await vscode.window.showInputBox({
+    title: 'Test a tool call',
+    prompt: 'Which permission rule decides this call? Checked deny → ask → allow; an approximation of Claude Code\'s matcher.',
+    placeHolder: 'Bash(npm test)   Read(src/index.ts)   WebFetch(https://example.com)   mcp__github__create_issue',
+  });
+  if (!call?.trim()) {
+    return;
+  }
+  const rules = securityReport(provider.getCollection().assets, effectiveSettings(root), root).rules;
+  const result = evaluate(call.trim(), rules, { cwd: root ?? process.cwd(), userClaudeDir: userClaudeDir() });
+  const decided = result.rules[0];
+  const label = { deny: 'Denied', ask: 'Asks first', allow: 'Allowed', none: 'No rule matches' }[result.decision];
+  const answer = await vscode.window.showInformationMessage(`${label}: ${result.explanation}`, ...(decided ? ['Open Rule'] : []));
+  if (answer === 'Open Rule' && decided) {
+    const line = decided.line ?? 0;
+    await vscode.window.showTextDocument(vscode.Uri.file(decided.sourcePath), { selection: new vscode.Range(line, 0, line, 0) });
+  }
+}
+
 /** Confirm, flip the documented switch, and rescan so the row reflects the file. */
 async function toggleItem(provider: ClaudeTreeProvider, node: AssetNode | undefined, enable: boolean): Promise<void> {
   const toggle = node?.asset.toggle;
   if (!toggle || !vscode.workspace.getConfiguration('claudeExplorer').get<boolean>('allowEditing', true)) {
     return;
   }
-  const what = toggle.target === 'plugin' ? 'plugin' : 'MCP server';
+  const what = { plugin: 'plugin', mcp: 'MCP server', skill: node.asset.kind, claudeMd: node.asset.kind === 'rule' ? 'rule' : 'memory file' }[toggle.target];
   const verb = enable ? 'Enable' : 'Disable';
+  const how = {
+    plugin: `enabledPlugins["${toggle.key}"]`,
+    mcp: 'enabledMcpjsonServers / disabledMcpjsonServers',
+    skill: `skillOverrides["${toggle.key}"]${enable ? ' (removed)' : ' = "off"'}`,
+    claudeMd: `claudeMdExcludes${enable ? ' (this path removed)' : ' (this path added)'}`,
+  }[toggle.target];
   const ok = await confirm(
     `${verb} ${what} "${node.asset.name}"?`,
-    `This edits ${toggle.file}. Claude Code sessions that are already running may need a restart to pick it up.`,
+    `This edits ${how} in ${toggle.file}. Claude Code sessions that are already running may need a restart to pick it up.${
+      enable && toggle.target === 'claudeMd' ? '\n\nIf another pattern or another settings file excludes it too, it stays excluded.' : ''
+    }`,
     verb,
   );
   if (!ok) {
     return;
   }
   try {
+    await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(vscode.Uri.file(toggle.file), '..'));
     await setEnabled(toggle, enable);
     provider.refresh();
   } catch (err) {

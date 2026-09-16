@@ -81,7 +81,14 @@ export interface Asset {
   toggle?: Toggle;
   /** Structured hook declaration, so the timeline does not re-parse `detail` strings. */
   hook?: HookDeclaration;
+  /**
+   * The `skillOverrides` state that applies to a user or project skill or command, when
+   * one is set. Absent means `on`. Filled by discovery/visibility.ts.
+   */
+  skillOverride?: SkillOverride;
 }
+
+export type SkillOverride = 'on' | 'name-only' | 'user-invocable-only' | 'off';
 
 export interface Override {
   /** The winning asset's name and scope, for display. */
@@ -102,8 +109,11 @@ export interface Override {
 export interface Toggle {
   /** The settings file that holds the switch. */
   file: string;
-  target: 'plugin' | 'mcp';
-  /** `name@marketplace` for a plugin; the server name for an MCP server. */
+  target: 'plugin' | 'mcp' | 'skill' | 'claudeMd';
+  /**
+   * `name@marketplace` for a plugin; the server name for an MCP server; the skill name
+   * for `skillOverrides`; the absolute file path for `claudeMdExcludes`.
+   */
   key: string;
 }
 
@@ -113,6 +123,8 @@ export interface HookDeclaration {
   matcher?: string;
   /** As written in the file. Redact before display. */
   command: string;
+  /** The settings or hooks.json file that declares it (the asset may point at the script). */
+  file: string;
 }
 
 export const ASSET_LABELS: Record<AssetKind, string> = {

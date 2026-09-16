@@ -202,3 +202,22 @@ export function firstMeaningfulLine(body: string): string | undefined {
   }
   return undefined;
 }
+
+/**
+ * A frontmatter value exactly as written on its line, quotes removed. For keys such as
+ * `argument-hint: [issue] [format]`, which look like a YAML list but are meant literally.
+ */
+export function rawFrontmatterLine(text: string, key: string): string | undefined {
+  const lines = text.replace(/\r\n/g, '\n').split('\n');
+  if (lines[0]?.trim() !== '---') {
+    return undefined;
+  }
+  for (let i = 1; i < lines.length && lines[i].trim() !== '---'; i++) {
+    const m = /^([A-Za-z_][A-Za-z0-9_-]*)\s*:\s*(.*)$/.exec(lines[i]);
+    if (m && m[1] === key) {
+      const value = unquote(m[2].trim());
+      return value === '' ? undefined : value;
+    }
+  }
+  return undefined;
+}

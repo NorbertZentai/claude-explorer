@@ -3,6 +3,7 @@ import { filesWithExtension, isDir, isFile, mtime, readJson, subdirs } from '../
 import { Account, readAccount } from './account';
 import { discoverHooksFromSettings, discoverPluginHooks } from './hooks';
 import { discoverAgents, discoverCommands, discoverNestedAgents, discoverSkills } from './markdownAssets';
+import { importProblem } from './imports';
 import { discoverProjectMcp, discoverPluginMcp } from './mcp';
 import {
   discoverPlugins,
@@ -19,6 +20,7 @@ import { discoverSettings, settingsFilesFor } from './settings';
 import { discoverFromRegistry, placeholdersFor } from './surfaces';
 import { discoverSystem, SYSTEM_SCOPE } from './system';
 import { applyOverrides } from '../analysis/overrides';
+import { applyVisibility } from './visibility';
 import { Asset, AssetKind, Scope, USER_SCOPE } from './types';
 
 export interface CollectOptions {
@@ -111,6 +113,7 @@ export function collect(options: CollectOptions): Collection {
     }
   }
 
+  applyVisibility(assets, claudeDir);
   applyOverrides(assets, scopes);
 
   // One central pass for timestamps rather than a stat at every construction site.
@@ -235,6 +238,7 @@ function userMemory(claudeDir: string, scope: Scope): Asset[] {
       scope,
       sourcePath: claudeMd,
       docs: 'https://code.claude.com/docs/en/memory',
+      problem: importProblem(claudeMd),
     });
   }
 
@@ -280,6 +284,7 @@ function projectMemory(scope: Scope): Asset[] {
         scope,
         sourcePath: file,
         docs: 'https://code.claude.com/docs/en/memory',
+        problem: importProblem(file),
       });
     }
   }

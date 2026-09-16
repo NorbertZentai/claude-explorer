@@ -20,6 +20,7 @@ import { ClaudeTreeProvider } from '../tree/provider';
 import { isEditingAllowed } from '../tree/style';
 import { readJson } from '../util/fs';
 import { redactCommandLine, redactText } from '../util/redact';
+import { sendToClaude } from './runActions';
 import { confirm, reportErrors } from './ui';
 
 /**
@@ -44,7 +45,7 @@ export function registerItemActions(context: vscode.ExtensionContext, provider: 
   command('claudeExplorer.lintSkill', (node?: AssetNode) => showSkillLint(node));
   command('claudeExplorer.copyMcpAddCommand', (node?: AssetNode) => copyMcpAddCommand(node));
   command('claudeExplorer.testMcpServer', (node?: AssetNode) => testMcpServer(provider, node));
-  command('claudeExplorer.copyPrompt', (node?: AssetNode) => copyPrompt(provider, node));
+  command('claudeExplorer.copyPrompt', (node?: AssetNode) => copyPrompt(context, provider, node));
   command('claudeExplorer.exportReport', (node?: GroupNode) => exportReport(provider, node));
 }
 
@@ -131,7 +132,7 @@ async function showSkillLint(node: AssetNode | undefined): Promise<void> {
   }
 }
 
-async function copyPrompt(provider: ClaudeTreeProvider, node: AssetNode | undefined): Promise<void> {
+async function copyPrompt(context: vscode.ExtensionContext, provider: ClaudeTreeProvider, node: AssetNode | undefined): Promise<void> {
   if (!node) {
     return;
   }
@@ -144,14 +145,33 @@ async function copyPrompt(provider: ClaudeTreeProvider, node: AssetNode | undefi
       ? estimateBudget(assets, root, provider.getMcpMeasurements()).rows.find((r) => r.sourcePath === asset.sourcePath)?.tokens
       : undefined;
   const prompts = promptsFor(asset, { ref: referenceFor(asset), winnerRef: winner && referenceFor(winner), tokens });
-  const picked = await vscode.window.showQuickPick(
-    prompts.map((p) => ({ label: p.label, description: p.detail, prompt: p })),
-    { title: `Copy a prompt about ${asset.invocation ?? asset.name}`, matchOnDescription: true },
-  );
-  if (picked) {
-    await vscode.env.clipboard.writeText(picked.prompt.text);
-    void vscode.window.setStatusBarMessage('Copied prompt. Paste it into Claude Code.', 4000);
-  }
+  // Enter copies; the ▶ button on a row starts Claude Code with it instead.
+  const send: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon('play'), tooltip: 'Send to Claude Code in a new terminal' };
+  const quickPick = vscode.window.createQuickPick<vscode.QuickPickItem & { prompt: (typeof prompts)[number] }>();
+  quickPick.title = `Copy a prompt about ${asset.invocation ?? asset.name}`;
+  quickPick.placeholder = 'Enter copies the prompt; ▶ sends it to a new Claude Code session';
+  quickPick.matchOnDescription = true;
+  quickPick.items = prompts.map((p) => ({ label: p.label, description: p.detail, prompt: p, buttons: [send] }));
+  await new Promise<void>((resolve) => {
+    quickPick.onDidAccept(async () => {
+      const picked = quickPick.selectedItems[0];
+      quickPick.hide();
+      if (picked) {
+        await vscode.env.clipboard.writeText(picked.prompt.text);
+        void vscode.window.setStatusBarMessage('Copied prompt. Paste it into Claude Code.', 4000);
+      }
+    });
+    quickPick.onDidTriggerItemButton(async (e) => {
+      quickPick.hide();
+      const cwd = asset.scope.kind === 'workspace' ? asset.scope.root : vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      await sendToClaude(context, e.item.prompt.text, cwd, e.item.prompt.label);
+    });
+    quickPick.onDidHide(() => {
+      quickPick.dispose();
+      resolve();
+    });
+    quickPick.show();
+  });
 }
 
 async function copyMcpAddCommand(node: AssetNode | undefined): Promise<void> {

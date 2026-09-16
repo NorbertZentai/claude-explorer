@@ -9,6 +9,37 @@ import { Asset } from './discovery/types';
  * clipboard.
  */
 
+/** Prompts offered by the Overview page, keyed by the id its buttons send. */
+export const PAGE_PROMPTS = {
+  securityHardening:
+    'Review the permission rules in my Claude Code settings for this project (.claude/settings.json, .claude/settings.local.json and ~/.claude/settings.json). Rules are checked deny, then ask, then allow, and the first match wins. Propose a tighter set: reading files inside the project is fine, edits should need approval outside src/ and tests, secrets such as .env files and ~/.ssh must be denied, curl, wget and other network commands should be denied in Bash, and web access should go through WebFetch(domain:…) rules only. If sandboxing is available, enable it with sandbox.network.allowedDomains limited to localhost and the package registries this project uses. Never print secret values. Show the diff of each settings file and wait for my approval before writing.',
+} as const;
+
+/** Set up Claude Code for a project from what is in it. */
+export function workspaceSetupPrompt(projectName: string): string {
+  return `Set up Claude Code for the ${projectName} project. 1) Read the build and dependency files that exist (package.json, Makefile, pyproject.toml, Cargo.toml, go.mod, pom.xml, build.gradle…) and the directory layout. 2) Create or improve CLAUDE.md at the project root: build, test and lint commands, plus the architecture rules and conventions Claude cannot infer from the code. Keep it under 200 lines. 3) Create a project skill at .claude/skills/run-tests/SKILL.md that runs the test suite and summarises failures, with a description that starts with what it does and then "Use when …". 4) Propose a PostToolUse hook in .claude/settings.json that runs the formatter or linter after Edit|Write, if the project has one. 5) Propose permission rules: allow the safe commands you found (tests, lint, build), deny reading .env files. Show every file before writing it and wait for my approval.`;
+}
+
+/** A new skill drafted by Claude, written to an exact location. */
+export function draftSkillPrompt(name: string, purpose: string, skillFile: string): string {
+  return `Write a new Claude Code skill named ${name} at ${skillFile}. What it should do: ${purpose.trim()}. Frontmatter: name: ${name}, and a description that starts with what the skill does followed by "Use when …" with concrete trigger situations (description plus when_to_use must stay under 1,536 characters). Add allowed-tools only for the tools it really needs. Body: short numbered steps; if a step needs a script, put the script next to SKILL.md and call it from the step. Keep SKILL.md under 500 lines and leave out anything Claude already knows. Show me the files before saving.`;
+}
+
+export const PERSONAL_PREFERENCES = [
+  'Keep answers short and to the point.',
+  'Write code in TypeScript unless I ask for another language.',
+  'Do not use Tailwind unless I ask for it.',
+  'Explain the plan in a few bullet points before large changes.',
+  'Run the relevant tests before saying something is done.',
+  'Answer in Hungarian, but keep code, identifiers and commit messages in English.',
+];
+
+/** Merge personal preferences into the user-level CLAUDE.md. */
+export function personalisePrompt(preferences: readonly string[]): string {
+  const list = preferences.map((p, i) => `(${i + 1}) ${p.trim().replace(/\.?$/, '.')}`).join(' ');
+  return `Update my user-level ~/.claude/CLAUDE.md (create it if it does not exist) with these personal preferences: ${list} Keep what is already there, merge duplicates, ask me which one wins where two contradict, phrase each as a short concrete instruction, and keep the file under 200 lines. Show the diff before saving.`;
+}
+
 export interface ItemPrompt {
   label: string;
   detail: string;
