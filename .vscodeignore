@@ -1,0 +1,15 @@
+.vscode/**
+.github/**
+src/**
+test/**
+node_modules/**
+esbuild.mjs
+tsconfig.json
+vitest.config.ts
+.gitignore
+.eslintrc*
+**/*.map
+**/*.ts
+# The headless audit CLI is a development tool and bundles a second copy of the
+# discovery layer. It was 45% of the package and is never loaded by the extension.
+dist/audit.js

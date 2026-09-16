@@ -1,0 +1,353 @@
+{
+  "name": "claude-explorer",
+  "displayName": "Claude Explorer",
+  "description": "Browse every Claude Code skill, command, subagent, hook, MCP server, plugin and setting on your machine. Unofficial, read-only, no account or network required.",
+  "version": "3.0.0",
+  "publisher": "CHANGE-ME-BEFORE-PUBLISHING",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "claudeExplorer",
+          "title": "Claude",
+          "icon": "resources/claude.svg"
+        }
+      ]
+    },
+    "views": {
+      "claudeExplorer": [
+        {
+          "id": "claudeExplorer.tree",
+          "name": "Configuration",
+          "icon": "resources/claude.svg",
+          "contextualTitle": "Claude Explorer",
+          "visibility": "visible"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "claudeExplorer.tree",
+        "contents": "No Claude Code configuration found.\n\nUser-level assets are read from your home directory; workspace assets from the open folder's .claude directory.\n\n[Refresh](command:claudeExplorer.refresh)"
+      }
+    ],
+    "commands": [
+      {
+        "command": "claudeExplorer.refresh",
+        "title": "Refresh",
+        "category": "Claude Explorer",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "claudeExplorer.filter",
+        "title": "Filter…",
+        "category": "Claude Explorer",
+        "icon": "$(search)"
+      },
+      {
+        "command": "claudeExplorer.clearFilter",
+        "title": "Clear Filter",
+        "category": "Claude Explorer",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "claudeExplorer.groupByType",
+        "title": "Group by Type",
+        "category": "Claude Explorer",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "claudeExplorer.groupByScope",
+        "title": "Group by Scope",
+        "category": "Claude Explorer",
+        "icon": "$(layers)"
+      },
+      {
+        "command": "claudeExplorer.openItem",
+        "title": "Open Source File",
+        "category": "Claude Explorer"
+      },
+      {
+        "command": "claudeExplorer.revealInExplorer",
+        "title": "Reveal in File Explorer",
+        "category": "Claude Explorer"
+      },
+      {
+        "command": "claudeExplorer.copyPath",
+        "title": "Copy Path",
+        "category": "Claude Explorer"
+      },
+      {
+        "command": "claudeExplorer.copyInvocation",
+        "title": "Copy Invocation",
+        "category": "Claude Explorer"
+      },
+      {
+        "command": "claudeExplorer.showProblems",
+        "title": "Show Problems",
+        "category": "Claude Explorer",
+        "icon": "$(warning)"
+      },
+      {
+        "command": "claudeExplorer.addWorkspaceFolder",
+        "title": "Attach Folder…",
+        "category": "Claude Explorer",
+        "icon": "$(add)"
+      },
+      {
+        "command": "claudeExplorer.removeWorkspaceFolder",
+        "title": "Detach Folder",
+        "category": "Claude Explorer",
+        "icon": "$(close)"
+      },
+      {
+        "command": "claudeExplorer.showGuide",
+        "title": "What is this for?",
+        "category": "Claude Explorer",
+        "icon": "$(book)"
+      },
+      {
+        "command": "claudeExplorer.copyGuidePrompt",
+        "title": "Copy Setup Prompt",
+        "category": "Claude Explorer",
+        "icon": "$(clippy)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "claudeExplorer.filter",
+          "when": "view == claudeExplorer.tree && !claudeExplorer.filtered",
+          "group": "navigation@1"
+        },
+        {
+          "command": "claudeExplorer.clearFilter",
+          "when": "view == claudeExplorer.tree && claudeExplorer.filtered",
+          "group": "navigation@1"
+        },
+        {
+          "command": "claudeExplorer.groupByType",
+          "when": "view == claudeExplorer.tree && claudeExplorer.grouping == scope",
+          "group": "navigation@2"
+        },
+        {
+          "command": "claudeExplorer.groupByScope",
+          "when": "view == claudeExplorer.tree && claudeExplorer.grouping == type",
+          "group": "navigation@2"
+        },
+        {
+          "command": "claudeExplorer.refresh",
+          "when": "view == claudeExplorer.tree",
+          "group": "navigation@3"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "claudeExplorer.showGuide",
+          "when": "view == claudeExplorer.tree && viewItem == typeGroup",
+          "group": "inline@1"
+        },
+        {
+          "command": "claudeExplorer.addWorkspaceFolder",
+          "when": "view == claudeExplorer.tree && viewItem == workspaceGroup",
+          "group": "inline@1"
+        },
+        {
+          "command": "claudeExplorer.removeWorkspaceFolder",
+          "when": "view == claudeExplorer.tree && viewItem == attachedScope",
+          "group": "inline@1"
+        },
+        {
+          "command": "claudeExplorer.openItem",
+          "when": "view == claudeExplorer.tree && viewItem =~ /openable/",
+          "group": "1_open@1"
+        },
+        {
+          "command": "claudeExplorer.revealInExplorer",
+          "when": "view == claudeExplorer.tree && viewItem =~ /openable/",
+          "group": "1_open@2"
+        },
+        {
+          "command": "claudeExplorer.copyPath",
+          "when": "view == claudeExplorer.tree && viewItem =~ /openable/",
+          "group": "2_copy@1"
+        },
+        {
+          "command": "claudeExplorer.copyInvocation",
+          "when": "view == claudeExplorer.tree && viewItem =~ /invocable/",
+          "group": "2_copy@2"
+        },
+        {
+          "command": "claudeExplorer.removeWorkspaceFolder",
+          "when": "view == claudeExplorer.tree && viewItem == attachedScope",
+          "group": "9_modify@1"
+        },
+        {
+          "command": "claudeExplorer.showGuide",
+          "when": "view == claudeExplorer.tree && viewItem == typeGroup",
+          "group": "0_guide@1"
+        },
+        {
+          "command": "claudeExplorer.copyGuidePrompt",
+          "when": "view == claudeExplorer.tree && viewItem == typeGroup",
+          "group": "0_guide@2"
+        },
+        {
+          "command": "claudeExplorer.showGuide",
+          "when": "view == claudeExplorer.tree && viewItem == placeholder",
+          "group": "0_guide@1"
+        },
+        {
+          "command": "claudeExplorer.copyGuidePrompt",
+          "when": "view == claudeExplorer.tree && viewItem == placeholder",
+          "group": "0_guide@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "claudeExplorer.copyGuidePrompt",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.copyInvocation",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.copyPath",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.openItem",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.removeWorkspaceFolder",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.revealInExplorer",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Claude Explorer",
+      "properties": {
+        "claudeExplorer.defaultGrouping": {
+          "type": "string",
+          "enum": [
+            "scope",
+            "type"
+          ],
+          "default": "scope",
+          "markdownDescription": "How to group the tree on first open. 'scope' separates User, Plugins and Workspace; 'type' puts all skills together, all hooks together, and so on.",
+          "scope": "window",
+          "order": 10
+        },
+        "claudeExplorer.showPluginProvided": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Include skills, commands, subagents, hooks and MCP servers that come from installed plugins.",
+          "scope": "window",
+          "order": 30
+        },
+        "claudeExplorer.extraProjectPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Additional project folders to scan even when they are not open. Merged with the folders you attach with the + button.",
+          "scope": "window",
+          "order": 40
+        },
+        "claudeExplorer.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Watch the Claude configuration directories and refresh the tree automatically when they change.",
+          "scope": "window",
+          "order": 50
+        },
+        "claudeExplorer.refreshDebounceMs": {
+          "type": "number",
+          "default": 300,
+          "minimum": 0,
+          "maximum": 10000,
+          "markdownDescription": "How long to wait after a file change before rebuilding the tree, so a burst of saves causes a single rebuild.",
+          "scope": "window",
+          "order": 60
+        },
+        "claudeExplorer.showUnusedSurfaces": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show a greyed row for every Claude Code surface a scope supports but has nothing configured for, so you can see what is available as well as what exists.",
+          "scope": "window",
+          "order": 20
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "audit": "node dist/audit.js",
+    "vscode:prepublish": "node esbuild.mjs --production",
+    "package": "vsce package",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "1.90.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.7.0"
+  },
+  "author": {
+    "name": "Norbert Zentai"
+  },
+  "icon": "resources/icon.png",
+  "galleryBanner": {
+    "color": "#262A36",
+    "theme": "dark"
+  },
+  "keywords": [
+    "claude",
+    "claude code",
+    "config",
+    "configuration",
+    "mcp",
+    "skills",
+    "hooks",
+    "agents",
+    "settings",
+    "multi-root ready"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CHANGE-ME/claude-explorer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CHANGE-ME/claude-explorer/issues"
+  },
+  "homepage": "https://github.com/CHANGE-ME/claude-explorer#readme",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "Claude Explorer reads configuration files from the local filesystem."
+    }
+  }
+}

@@ -1,0 +1,52 @@
+/**
+ * The single choke point for anything that comes out of an MCP server's `env` block.
+ *
+ * Claude's MCP definitions carry credentials in plaintext -- an `env` of
+ * `{"SOME_API_KEY": "live_abc123..."}` is normal and expected. This extension renders
+ * config into a tree, which is one careless JSON.stringify away from putting a live
+ * credential on screen and into a screenshot.
+ *
+ * So values never leave this module. Only names do. There is deliberately no function
+ * here that returns a value, not even a masked or truncated one: a prefix is still a
+ * disclosure, and a length is still a hint.
+ */
+
+/** Names of the variables an env block defines, sorted. Never their values. */
+export function envVarNames(env: unknown): string[] {
+  if (!env || typeof env !== 'object' || Array.isArray(env)) {
+    return [];
+  }
+  return Object.keys(env as Record<string, unknown>).sort();
+}
+
+/** A one-line summary of an env block for a tooltip: names only, never values. */
+export function describeEnv(env: unknown): string | undefined {
+  const names = envVarNames(env);
+  if (names.length === 0) {
+    return undefined;
+  }
+  return `${names.length} environment variable${names.length === 1 ? '' : 's'}: ${names.join(', ')} (values not shown)`;
+}
+
+/**
+ * A command line is safe to display -- it is what `claude mcp list` prints -- but a
+ * credential passed as an argument would not be. Redact anything that looks like one
+ * while leaving the readable parts of the command intact.
+ */
+const SECRET_ARG = /^(?:[A-Za-z0-9_-]*(?:key|token|secret|password|pwd|credential)[A-Za-z0-9_-]*)=(.+)$/i;
+const SECRET_LOOKING = /^(?:sk|pk|ghp|gho|xox[abps]|ocr_live|live|api)[-_][A-Za-z0-9_-]{12,}$/i;
+
+export function redactCommandLine(parts: readonly string[]): string {
+  return parts
+    .map((part) => {
+      const kv = SECRET_ARG.exec(part);
+      if (kv) {
+        return part.slice(0, part.length - kv[1].length) + '••••••';
+      }
+      if (SECRET_LOOKING.test(part)) {
+        return '••••••';
+      }
+      return part;
+    })
+    .join(' ');
+}
