@@ -1,4 +1,4 @@
-# Claude Explorer
+# Explorer for Claude Code
 
 > **Unofficial.** A community extension, not affiliated with, endorsed by, or supported by Anthropic.
 > "Claude" and "Claude Code" are trademarks of Anthropic.

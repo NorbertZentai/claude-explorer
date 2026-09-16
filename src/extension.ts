@@ -123,7 +123,7 @@ export function activate(context: vscode.ExtensionContext): void {
         canSelectFiles: false,
         canSelectMany: false,
         openLabel: 'Attach folder',
-        title: 'Attach a project folder to Claude Explorer',
+        title: 'Attach a project folder to Explorer for Claude Code',
       });
       const folder = picked?.[0]?.fsPath;
       if (!folder) {

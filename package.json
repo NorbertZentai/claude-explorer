@@ -1,9 +1,11 @@
 {
-  "name": "claude-explorer",
-  "displayName": "Claude Explorer",
+  "name": "explorer-for-claude-code",
+  "displayName": "Explorer for Claude Code",
   "description": "Browse every Claude Code skill, command, subagent, hook, MCP server, plugin and setting on your machine. Unofficial, read-only, no account or network required.",
   "version": "3.0.0",
   "publisher": "semaxien",
+  "license": "MIT",
+  "pricing": "Free",
   "repository": {
     "type": "git",
     "url": "https://github.com/NorbertZentai/claude-explorer.git"
@@ -12,7 +14,8 @@
     "vscode": "^1.90.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Visualization"
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
@@ -34,7 +37,7 @@
           "id": "claudeExplorer.tree",
           "name": "Configuration",
           "icon": "resources/claude.svg",
-          "contextualTitle": "Claude Explorer",
+          "contextualTitle": "Explorer for Claude Code",
           "visibility": "visible"
         }
       ]
@@ -49,81 +52,81 @@
       {
         "command": "claudeExplorer.refresh",
         "title": "Refresh",
-        "category": "Claude Explorer",
+        "category": "Explorer for Claude Code",
         "icon": "$(refresh)"
       },
       {
         "command": "claudeExplorer.filter",
         "title": "Filter…",
-        "category": "Claude Explorer",
+        "category": "Explorer for Claude Code",
         "icon": "$(search)"
       },
       {
         "command": "claudeExplorer.clearFilter",
         "title": "Clear Filter",
-        "category": "Claude Explorer",
+        "category": "Explorer for Claude Code",
         "icon": "$(clear-all)"
       },
       {
         "command": "claudeExplorer.groupByType",
         "title": "Group by Type",
-        "category": "Claude Explorer",
+        "category": "Explorer for Claude Code",
         "icon": "$(list-tree)"
       },
       {
         "command": "claudeExplorer.groupByScope",
         "title": "Group by Scope",
-        "category": "Claude Explorer",
+        "category": "Explorer for Claude Code",
         "icon": "$(layers)"
       },
       {
         "command": "claudeExplorer.openItem",
         "title": "Open Source File",
-        "category": "Claude Explorer"
+        "category": "Explorer for Claude Code"
       },
       {
         "command": "claudeExplorer.revealInExplorer",
         "title": "Reveal in File Explorer",
-        "category": "Claude Explorer"
+        "category": "Explorer for Claude Code"
       },
       {
         "command": "claudeExplorer.copyPath",
         "title": "Copy Path",
-        "category": "Claude Explorer"
+        "category": "Explorer for Claude Code"
       },
       {
         "command": "claudeExplorer.copyInvocation",
         "title": "Copy Invocation",
-        "category": "Claude Explorer"
+        "category": "Explorer for Claude Code"
       },
       {
         "command": "claudeExplorer.showProblems",
         "title": "Show Problems",
-        "category": "Claude Explorer",
+        "category": "Explorer for Claude Code",
         "icon": "$(warning)"
       },
       {
         "command": "claudeExplorer.addWorkspaceFolder",
         "title": "Attach Folder…",
-        "category": "Claude Explorer",
+        "category": "Explorer for Claude Code",
         "icon": "$(add)"
       },
       {
         "command": "claudeExplorer.removeWorkspaceFolder",
         "title": "Detach Folder",
-        "category": "Claude Explorer",
+        "category": "Explorer for Claude Code",
         "icon": "$(close)"
       },
       {
         "command": "claudeExplorer.showGuide",
         "title": "What is this for?",
-        "category": "Claude Explorer",
+        "category": "Explorer for Claude Code",
         "icon": "$(book)"
       },
       {
         "command": "claudeExplorer.copyGuidePrompt",
         "title": "Copy Setup Prompt",
-        "category": "Claude Explorer",
+        "category": "Explorer for Claude Code",
         "icon": "$(clippy)"
       }
     ],
@@ -245,7 +248,7 @@
       ]
     },
     "configuration": {
-      "title": "Claude Explorer",
+      "title": "Explorer for Claude Code",
       "properties": {
         "claudeExplorer.defaultGrouping": {
           "type": "string",
@@ -336,10 +339,6 @@
     "settings",
     "multi-root ready"
   ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/NorbertZentai/claude-explorer.git"
-  },
   "bugs": {
     "url": "https://github.com/NorbertZentai/claude-explorer/issues"
   },
@@ -350,7 +349,7 @@
     },
     "virtualWorkspaces": {
       "supported": false,
-      "description": "Claude Explorer reads configuration files from the local filesystem."
+      "description": "Explorer for Claude Code reads configuration files from the local filesystem."
     }
   }
 }

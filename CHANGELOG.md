@@ -11,6 +11,8 @@ visible immediately, hence the major version.
 
 ### Changed
 
+- Renamed to **Explorer for Claude Code** (extension ID `semaxien.explorer-for-claude-code`).
+  Command and setting IDs (`claudeExplorer.*`) are unchanged.
 - **A scope is the folder you opened, and nothing else.** Previously the extension walked
   up to the outermost enclosing `.claude/` and then listed every sibling that looked like a
   project — opening one repo inside a monorepo showed all of them. Extra folders are now
