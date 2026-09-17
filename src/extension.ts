@@ -5,6 +5,7 @@ import { securityReport } from './analysis/security';
 import { hasClaudeConfig, userClaudeDir } from './discovery/scopes';
 import { AssetKind } from './discovery/types';
 import { GUIDES, renderGuide } from './guides';
+import { clearFileCache } from './util/fs';
 import { registerCreateActions } from './commands/createActions';
 import { registerItemActions } from './commands/itemActions';
 import { registerRunActions } from './commands/runActions';
@@ -69,7 +70,13 @@ export function activate(context: vscode.ExtensionContext): void {
   const setGrouping = (grouping: Grouping): void => provider.setGrouping(grouping);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('claudeExplorer.refresh', () => provider.refresh()),
+    vscode.commands.registerCommand('claudeExplorer.refresh', () => {
+      // File contents are normally kept between scans and revalidated by timestamp. Someone
+      // who reaches for Refresh by hand usually suspects the tree of being wrong, so this is
+      // the one path that throws that away and reads everything again.
+      clearFileCache();
+      provider.refresh();
+    }),
 
     vscode.commands.registerCommand('claudeExplorer.filter', async () => {
       const value = await vscode.window.showInputBox({

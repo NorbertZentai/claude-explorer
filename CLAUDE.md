@@ -35,6 +35,19 @@ Layering is the main rule: **`src/discovery`, `src/analysis`, `src/edit/*Text.ts
   - `surfaces.ts` holds the `SURFACES` catalogue: where each kind lives per scope. It drives generic discovery, the greyed placeholder rows, and `surfaceDirs()` for file actions.
   - Bespoke readers handle skills, commands and agents (`markdownAssets.ts` with the hand-written YAML-subset parser in `frontmatter.ts`), settings, hooks, MCP and system.
   - `collect()` finishes with `applyOverrides()` and an mtime pass.
+  - **Reads are cached on two levels, both in `src/util/fs.ts`.** Within one pass,
+    `beginScan()`/`endScan()` memoise `statSync` and `readFileSync` (42% of stats and 22% of
+    reads were repeats of a path already visited). Between passes, file *contents* are kept and
+    revalidated against mtime and size, because opening a file costs about thirteen times what
+    stat-ing it does. A rescan that changes nothing therefore reads no files at all: measured
+    63 ms -> 16 ms here, 180 ms -> 23 ms on a 317-item configuration.
+  - A file modified in the last second is never served from the content cache, since a second
+    write can land before the timestamp distinguishes it. `clearFileCache()` throws the whole
+    lot away and is what the manual **Refresh** command calls.
+  - **The failure mode to fear is a cache that outlives its facts** -- the tree would silently
+    stop updating. `test/util/fileCache.test.ts` and `test/discovery/collect.test.ts` pin the
+    cases that matter: same size but different content, preserved timestamp but different size,
+    deletion, and recreation.
 - **Analysis** (`src/analysis`): pure functions over a collection, each scoped to one project because a Claude Code session runs in one project.
   - `overrides.ts`: name shadowing, with rules that differ for skills/commands vs subagents.
   - `contextBudget.ts`: characters ÷ 4 token estimate, plus MCP measurements.

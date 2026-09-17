@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { filesWithExtension, isDir, isFile, mtime, readJson, subdirs } from '../util/fs';
+import { beginScan, endScan, filesWithExtension, isDir, isFile, mtime, readJson, subdirs } from '../util/fs';
 import { Account, readAccount } from './account';
 import { discoverHooksFromSettings, discoverPluginHooks } from './hooks';
 import { discoverAgents, discoverCommands, discoverNestedAgents, discoverSkills } from './markdownAssets';
@@ -46,6 +46,17 @@ export interface Collection {
 }
 
 export function collect(options: CollectOptions): Collection {
+  // One pass over the disk is one snapshot: memoise the reads for its duration, and drop
+  // them afterwards so the next scan sees any change.
+  beginScan();
+  try {
+    return scanOnce(options);
+  } finally {
+    endScan();
+  }
+}
+
+function scanOnce(options: CollectOptions): Collection {
   const assets: Asset[] = [];
   const claudeDir = userClaudeDir();
   const userScope = USER_SCOPE(claudeDir);

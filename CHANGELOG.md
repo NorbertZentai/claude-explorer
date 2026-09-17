@@ -109,6 +109,14 @@ Initial version.
 - The right-click menu on tree rows groups its actions into Copy, Edit, Diagnose and Ask Claude Code
   submenus, with Run, Open, Reveal, Show in Overview and Move to Trash at the top level.
 
+- Rescans are about four times faster. Opening a file costs roughly thirteen times what
+  checking its timestamp does, and every rescan used to re-read every file. File contents are
+  now kept between scans and revalidated against timestamp and size, so a rescan that changes
+  nothing reads no files at all: 63 ms to 16 ms on a 92-item configuration, 180 ms to 23 ms on
+  a 317-item one, with the spread between a fast and a slow scan narrowing from 93-220 ms to
+  21-25 ms. A file touched in the last second is always re-read, and **Refresh** discards the
+  cache outright.
+
 ### Fixed
 
 - A hook command was shown in the tree row and its tooltip exactly as written, so a credential
