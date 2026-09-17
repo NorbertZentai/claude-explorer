@@ -2,7 +2,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { confirm, reportErrors } from '../commands/ui';
-import { sendToClaude } from '../commands/runActions';
+import { sendToActiveSession, sendToClaude } from '../commands/runActions';
 import { userClaudeDir } from '../discovery/scopes';
 import { activeProjectRoot } from '../statusBar';
 import { ClaudeTreeProvider } from '../tree/provider';
@@ -296,6 +296,13 @@ export function registerSnippets(context: vscode.ExtensionContext, provider: Cla
     const snippet = await pick(node);
     if (snippet) {
       await sendToClaude(context, snippet.text, activeProjectRoot(provider), snippet.title);
+    }
+  });
+  command('claudeExplorer.snippet.sendToSession', async (node?: SnippetNode) => {
+    const snippet = await pick(node);
+    if (snippet) {
+      // No Enter: a snippet is usually the start of a message, not the whole of it.
+      await sendToActiveSession(context, snippet.text, { submit: false, title: snippet.title, cwd: activeProjectRoot(provider) });
     }
   });
   command('claudeExplorer.snippet.insert', async (node?: SnippetNode) => {

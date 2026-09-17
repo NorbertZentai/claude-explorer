@@ -588,7 +588,7 @@ function restoreExpansion(nodes: readonly Node[], expanded: ReadonlySet<string>)
  * What the view actually depends on. Anything not in here -- a transcript being written,
  * a cache file touched -- must not cause a visible refresh.
  */
-function fingerprint(collection: Collection): string {
+export function fingerprint(collection: Collection): string {
   const assets = collection.assets.map((a) =>
     [a.kind, a.name, a.scope.root, a.sourcePath, a.modified ?? 0, a.problem ?? '', a.enabled ?? '', a.skillOverride ?? ''].join(''),
   );

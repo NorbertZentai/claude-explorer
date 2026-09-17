@@ -286,9 +286,27 @@
       },
       {
         "command": "claudeExplorer.runItem",
-        "title": "Run in Claude Code",
+        "title": "Run in a New Terminal",
         "category": "Explorer for Claude Code",
         "icon": "$(play)"
+      },
+      {
+        "command": "claudeExplorer.insertInSession",
+        "title": "Insert in Active Session",
+        "category": "Explorer for Claude Code",
+        "icon": "$(send)"
+      },
+      {
+        "command": "claudeExplorer.runInSession",
+        "title": "Run in Active Session",
+        "category": "Explorer for Claude Code",
+        "icon": "$(play-circle)"
+      },
+      {
+        "command": "claudeExplorer.insertMentionInSession",
+        "title": "Insert Subagent Mention in Active Session",
+        "category": "Explorer for Claude Code",
+        "icon": "$(send)"
       },
       {
         "command": "claudeExplorer.runInvocation",
@@ -387,6 +405,12 @@
         "icon": "$(play)"
       },
       {
+        "command": "claudeExplorer.snippet.sendToSession",
+        "title": "Insert Snippet in Active Session",
+        "category": "Explorer for Claude Code",
+        "icon": "$(send)"
+      },
+      {
         "command": "claudeExplorer.snippet.insert",
         "title": "Insert Snippet into CLAUDE.md or Rule…",
         "category": "Explorer for Claude Code",
@@ -442,6 +466,11 @@
       }
     ],
     "submenus": [
+      {
+        "id": "claudeExplorer.runMenu",
+        "label": "Run",
+        "icon": "$(play)"
+      },
       {
         "id": "claudeExplorer.copyMenu",
         "label": "Copy",
@@ -578,19 +607,19 @@
           "group": "inline@0"
         },
         {
-          "command": "claudeExplorer.runItem",
+          "command": "claudeExplorer.insertInSession",
           "when": "view == claudeExplorer.tree && viewItem =~ /\\brunnable\\b/",
+          "group": "inline@0"
+        },
+        {
+          "command": "claudeExplorer.insertMentionInSession",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bmentionable\\b/",
           "group": "inline@0"
         },
         {
           "command": "claudeExplorer.editSetting",
           "when": "view == claudeExplorer.tree && viewItem =~ /\\bsettingEditable\\b/",
           "group": "inline@2"
-        },
-        {
-          "command": "claudeExplorer.runItem",
-          "when": "view == claudeExplorer.tree && viewItem =~ /\\brunnable\\b/",
-          "group": "0_run@1"
         },
         {
           "command": "claudeExplorer.showGuide",
@@ -653,6 +682,11 @@
           "group": "2_create@2"
         },
         {
+          "submenu": "claudeExplorer.runMenu",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\b(runnable|mentionable)\\b/",
+          "group": "3_menus@0"
+        },
+        {
           "submenu": "claudeExplorer.copyMenu",
           "when": "view == claudeExplorer.tree && viewItem =~ /\\b(openable|invocable|mcpServer)\\b/",
           "group": "3_menus@1"
@@ -688,7 +722,7 @@
           "group": "9_delete@1"
         },
         {
-          "command": "claudeExplorer.snippet.send",
+          "command": "claudeExplorer.snippet.sendToSession",
           "when": "view == claudeExplorer.snippets && viewItem == snippet",
           "group": "inline@0"
         },
@@ -701,6 +735,11 @@
           "command": "claudeExplorer.snippet.insert",
           "when": "view == claudeExplorer.snippets && viewItem == snippet",
           "group": "inline@2"
+        },
+        {
+          "command": "claudeExplorer.snippet.sendToSession",
+          "when": "view == claudeExplorer.snippets && viewItem == snippet",
+          "group": "1_use@0"
         },
         {
           "command": "claudeExplorer.snippet.send",
@@ -836,6 +875,18 @@
           "when": "false"
         },
         {
+          "command": "claudeExplorer.runInSession",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.insertInSession",
+          "when": "false"
+        },
+        {
+          "command": "claudeExplorer.insertMentionInSession",
+          "when": "false"
+        },
+        {
           "command": "claudeExplorer.runInvocation",
           "when": "false"
         },
@@ -885,6 +936,38 @@
           "command": "claudeExplorer.snippet.fromSelection",
           "when": "editorHasSelection",
           "group": "9_claude@1"
+        }
+      ],
+      "claudeExplorer.runMenu": [
+        {
+          "command": "claudeExplorer.runInSession",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\brunnable\\b/",
+          "group": "1_session@1"
+        },
+        {
+          "command": "claudeExplorer.insertInSession",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\brunnable\\b/",
+          "group": "1_session@2"
+        },
+        {
+          "command": "claudeExplorer.insertMentionInSession",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\bmentionable\\b/",
+          "group": "1_session@3"
+        },
+        {
+          "command": "claudeExplorer.runItem",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\brunnable\\b/",
+          "group": "2_new@1"
+        },
+        {
+          "command": "claudeExplorer.copyInvocation",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\brunnable\\b/",
+          "group": "3_copy@1"
+        },
+        {
+          "command": "claudeExplorer.copyPrompt",
+          "when": "view == claudeExplorer.tree && viewItem =~ /\\b(runnable|mentionable)\\b/",
+          "group": "3_copy@2"
         }
       ],
       "claudeExplorer.copyMenu": [
@@ -1281,11 +1364,13 @@
   "scripts": {
     "compile": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "audit": "node dist/audit.js",
     "vscode:prepublish": "node esbuild.mjs --production",
     "package": "vsce package",
-    "lint": "tsc --noEmit"
+    "lint": "npm run typecheck",
+    "test": "node esbuild.test.mjs && node --test-reporter=spec --enable-source-maps --test \"out/test/**/*.test.js\"",
+    "test:watch": "node esbuild.test.mjs --watch"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

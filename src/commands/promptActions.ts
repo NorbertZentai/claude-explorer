@@ -8,7 +8,7 @@ import { draftSkillPrompt, PAGE_PROMPTS, PERSONAL_PREFERENCES, personalisePrompt
 import { activeProjectRoot } from '../statusBar';
 import { AssetNode, GroupNode } from '../tree/nodes';
 import { ClaudeTreeProvider } from '../tree/provider';
-import { sendToClaude } from './runActions';
+import { sendToActiveSession, sendToClaude } from './runActions';
 import { reportErrors } from './ui';
 import { validateItemName } from './itemActions';
 
@@ -183,19 +183,23 @@ async function pickProject(provider: ClaudeTreeProvider): Promise<string | undef
   return picked?.root;
 }
 
-/** Copy the prompt, or start Claude Code with it in a terminal. */
+/** Send the prompt to the session already running, start a new one with it, or copy it. */
 export async function deliverPrompt(context: vscode.ExtensionContext, text: string, cwd: string | undefined, title: string, what: string): Promise<void> {
-  const choice = await vscode.window.showQuickPick(
+  type Delivery = 'session' | 'terminal' | 'clipboard';
+  const choice = await vscode.window.showQuickPick<vscode.QuickPickItem & { delivery: Delivery }>(
     [
-      { label: '$(play) Send to Claude Code', description: cwd ? `new terminal in ${path.basename(cwd)}` : 'new terminal', send: true },
-      { label: '$(copy) Copy prompt', description: 'paste it into a running session', send: false },
+      { label: '$(send) Send to the running session', description: 'typed at the prompt of your open Claude Code terminal', delivery: 'session' },
+      { label: '$(play) Send to Claude Code', description: cwd ? `new terminal in ${path.basename(cwd)}` : 'new terminal', delivery: 'terminal' },
+      { label: '$(copy) Copy prompt', description: 'paste it yourself', delivery: 'clipboard' },
     ],
     { title: what, placeHolder: text.length > 160 ? `${text.slice(0, 157)}…` : text },
   );
   if (!choice) {
     return;
   }
-  if (choice.send) {
+  if (choice.delivery === 'session') {
+    await sendToActiveSession(context, text, { submit: true, title, cwd });
+  } else if (choice.delivery === 'terminal') {
     await sendToClaude(context, text, cwd, title);
   } else {
     await vscode.env.clipboard.writeText(text);

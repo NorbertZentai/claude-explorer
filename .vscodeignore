@@ -2,6 +2,7 @@
 .github/**
 src/**
 test/**
+out/**
 node_modules/**
 esbuild.mjs
 tsconfig.json

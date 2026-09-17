@@ -5,6 +5,7 @@ import { Account } from '../discovery/account';
 import { ReportTarget } from '../analysis/report';
 import { Asset, AssetKind, Scope, ScopeKind } from '../discovery/types';
 import { CREATABLE_KINDS } from '../edit/templates';
+import { INVOCATION } from '../util/shell';
 import { isEditingAllowed, KIND_ICONS, Tone, toneIcon, toneUri } from './style';
 
 export type Node = GroupNode | AssetNode | MessageNode | AccountNode;
@@ -22,6 +23,104 @@ const FILE_KINDS = new Set<AssetKind>(['skill', 'command', 'agent', 'rule', 'out
 const WHY_KINDS = new Set<AssetKind>(['skill', 'command', 'agent', 'rule', 'memory', 'hook', 'mcp']);
 /** Kinds the Overview page has a row for. */
 const DASHBOARD_KINDS = new Set<AssetKind>(['skill', 'command', 'agent', 'rule', 'memory', 'setting', 'hook']);
+
+/**
+ * Every flag `contextFlags` can produce. The menu `when` clauses in package.json match this
+ * vocabulary with word-boundary regexes, so a rename here silently empties a menu; the
+ * contributes test compares the two lists.
+ */
+export const ASSET_FLAGS = [
+  'placeholder',
+  'openable',
+  'invocable',
+  'documented',
+  'togglable',
+  'disabled',
+  'enabled',
+  'skillVisibility',
+  'creatable',
+  'fileBacked',
+  'editable',
+  'skill',
+  'mcpServer',
+  'permissions',
+  'dashboardable',
+  'overridden',
+  'runnable',
+  'mentionable',
+  'describable',
+  'settingEditable',
+  'diagnosable',
+] as const;
+
+/**
+ * The flags a row's `contextValue` carries, as a list.
+ *
+ * Pure and exported because the menu `when` clauses depend on it: two of them match on
+ * ADJACENCY (`/\btogglable enabled\b/`, `/\btogglable disabled\b/`) and one on the token
+ * standing alone (`/(^| )skill( |$)/`), so the order of these pushes is load-bearing.
+ */
+export function contextFlags(asset: Asset, editing: boolean): string[] {
+  const flags = [asset.placeholder ? 'placeholder' : 'openable'];
+  if (asset.invocation) {
+    flags.push('invocable');
+  }
+  if (asset.docs) {
+    flags.push('documented');
+  }
+  if (asset.toggle && editing) {
+    flags.push('togglable', asset.enabled === false ? 'disabled' : 'enabled');
+    if (asset.toggle.target === 'skill') {
+      flags.push('skillVisibility');
+    }
+  }
+  const ownScope = asset.scope.kind === 'user' || asset.scope.kind === 'workspace';
+  if (asset.placeholder && editing && ownScope && CREATABLE_KINDS.has(asset.kind)) {
+    flags.push('creatable');
+  }
+  if (!asset.placeholder) {
+    // Only your own files: plugin content is managed by the plugin, system by an admin.
+    if (FILE_KINDS.has(asset.kind) && (asset.scope.kind === 'user' || asset.scope.kind === 'workspace')) {
+      flags.push('fileBacked');
+      if (editing) {
+        flags.push('editable');
+      }
+    }
+    if (asset.kind === 'skill') {
+      flags.push('skill');
+    }
+    // Stale approvals point at settings.local.json and have no definition to read.
+    if (asset.kind === 'mcp' && asset.sourcePath.endsWith('.mcp.json')) {
+      flags.push('mcpServer');
+    }
+    if (asset.kind === 'setting' && asset.name === 'permissions' && editing) {
+      flags.push('permissions');
+    }
+    if (asset.overriddenBy || asset.problem || DASHBOARD_KINDS.has(asset.kind)) {
+      flags.push('dashboardable');
+    }
+    if (asset.overriddenBy) {
+      flags.push('overridden');
+    }
+    if (asset.invocation && INVOCATION.test(asset.invocation) && (asset.kind === 'skill' || asset.kind === 'command')) {
+      flags.push('runnable');
+    }
+    // Subagents have no slash command, so all a session row can offer them is a mention.
+    if (asset.kind === 'agent') {
+      flags.push('mentionable');
+    }
+    if (editing && (asset.kind === 'skill' || asset.kind === 'command' || asset.kind === 'agent') && (asset.scope.kind === 'user' || asset.scope.kind === 'workspace')) {
+      flags.push('describable');
+    }
+    if (editing && asset.kind === 'setting' && ['model', 'outputStyle', 'permissions'].includes(asset.name)) {
+      flags.push('settingEditable');
+    }
+    if (WHY_KINDS.has(asset.kind)) {
+      flags.push('diagnosable');
+    }
+  }
+  return flags;
+}
 
 export class GroupNode extends vscode.TreeItem {
   readonly type = 'group' as const;
@@ -114,62 +213,7 @@ export class AssetNode extends vscode.TreeItem {
     this.iconPath = toneIcon(icon, tone);
     this.resourceUri = toneUri(tone);
 
-    const flags = [asset.placeholder ? 'placeholder' : 'openable'];
-    if (asset.invocation) {
-      flags.push('invocable');
-    }
-    if (asset.docs) {
-      flags.push('documented');
-    }
-    const editing = isEditingAllowed();
-    if (asset.toggle && editing) {
-      flags.push('togglable', asset.enabled === false ? 'disabled' : 'enabled');
-      if (asset.toggle.target === 'skill') {
-        flags.push('skillVisibility');
-      }
-    }
-    const ownScope = asset.scope.kind === 'user' || asset.scope.kind === 'workspace';
-    if (asset.placeholder && editing && ownScope && CREATABLE_KINDS.has(asset.kind)) {
-      flags.push('creatable');
-    }
-    if (!asset.placeholder) {
-      // Only your own files: plugin content is managed by the plugin, system by an admin.
-      if (FILE_KINDS.has(asset.kind) && (asset.scope.kind === 'user' || asset.scope.kind === 'workspace')) {
-        flags.push('fileBacked');
-        if (editing) {
-          flags.push('editable');
-        }
-      }
-      if (asset.kind === 'skill') {
-        flags.push('skill');
-      }
-      // Stale approvals point at settings.local.json and have no definition to read.
-      if (asset.kind === 'mcp' && asset.sourcePath.endsWith('.mcp.json')) {
-        flags.push('mcpServer');
-      }
-      if (asset.kind === 'setting' && asset.name === 'permissions' && editing) {
-        flags.push('permissions');
-      }
-      if (asset.overriddenBy || asset.problem || DASHBOARD_KINDS.has(asset.kind)) {
-        flags.push('dashboardable');
-      }
-      if (asset.overriddenBy) {
-        flags.push('overridden');
-      }
-      if (asset.invocation && /^\/[A-Za-z0-9_][A-Za-z0-9_.:-]*$/.test(asset.invocation) && (asset.kind === 'skill' || asset.kind === 'command')) {
-        flags.push('runnable');
-      }
-      if (editing && (asset.kind === 'skill' || asset.kind === 'command' || asset.kind === 'agent') && (asset.scope.kind === 'user' || asset.scope.kind === 'workspace')) {
-        flags.push('describable');
-      }
-      if (editing && asset.kind === 'setting' && ['model', 'outputStyle', 'permissions'].includes(asset.name)) {
-        flags.push('settingEditable');
-      }
-      if (WHY_KINDS.has(asset.kind)) {
-        flags.push('diagnosable');
-      }
-    }
-    this.contextValue = flags.join(' ');
+    this.contextValue = contextFlags(asset, isEditingAllowed()).join(' ');
 
     this.command = asset.placeholder
       ? {

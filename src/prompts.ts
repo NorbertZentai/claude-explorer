@@ -122,6 +122,15 @@ export interface PromptContext {
   tokens?: number;
 }
 
+/**
+ * What to put on a running session's prompt for a subagent. Subagents have no slash command, so
+ * this is the opening of a sentence the user finishes: "Use the code-reviewer subagent to …".
+ * Built from the name alone, like every other prompt here.
+ */
+export function agentMentionText(asset: Asset): string {
+  return `Use the ${asset.name} subagent to`;
+}
+
 /** A prompt about one file: its @-reference first, so Claude reads it before anything else. */
 function about(ref: string, label: string, detail: string, parts: PromptParts): ItemPrompt {
   return { label, detail, text: `${ref}\n\n${framePrompt(parts)}` };

@@ -119,7 +119,8 @@ view. `claudeExplorer.statusBar` shows all, only the estimate, or nothing.
 
 A second view, **Snippets**, keeps prompts and instructions you reuse, grouped by tag. Save a
 selection from any editor (right-click → *Save Selection as Snippet*), edit a snippet's text in a
-normal editor tab and save, and from its row: **Send to Claude Code** in a new terminal, **Copy**,
+normal editor tab and save, and from its row: **Insert in Active Session** (➤, typed at the prompt
+of your open session without pressing Enter), **Send to Claude Code** in a new terminal, **Copy**,
 or **Insert into** your user or project `CLAUDE.md`, `CLAUDE.local.md`, an existing rule, or a new
 rule with an optional `paths:` pattern (with the token cost in the confirmation). Import and export
 as JSON. Snippets are stored in VS Code's storage for this extension on this machine.
@@ -163,9 +164,17 @@ Click the icon in the activity bar.
   `~/.claude/settings.json`. **Set Visibility…** on a skill also offers `name-only` and
   `user-invocable-only`. Only that key changes, formatting is kept, and Undo works. Running Claude
   Code sessions may need a restart to notice.
-- **Run** (▶) a skill or command: opens a terminal in its project and starts `claude "/deploy"`,
-  asking for arguments when it has an `argument-hint`. **Assign Keybinding…** adds an entry to your
-  VS Code `keybindings.json` that does the same; you type the key and save.
+- **Insert in Active Session** (the ➤ on a skill or command) types `/deploy ` at the prompt of the
+  Claude Code session you already have open, focuses that terminal and stops there, so you can add
+  arguments or context and press Enter yourself. On a subagent it types `Use the <name> subagent to `
+  instead, because subagents have no slash command. **Run ›** on the same row also has **Run in
+  Active Session** (the same, but it presses Enter and asks for arguments first when the item has an
+  `argument-hint`) and **Run in a New Terminal**, which opens a terminal in the item's project and
+  starts `claude "/deploy"`. Which terminal counts as the session is a guess — one this extension
+  started, else a focused or open terminal named `claude…`, else it asks — so the first insert shows
+  the terminal's name and the exact text, and warns that a terminal not running Claude Code gets the
+  text in its shell. **Assign Keybinding…** adds an entry to your VS Code `keybindings.json` that
+  runs it in a new terminal; you type the key and save.
 - **Clean Up Configuration…** (view title menu) lists hooks whose script is gone, approvals for MCP
   servers that no longer exist, plans past `cleanupPeriodDays`, empty folders, skill folders
   without `SKILL.md` and broken symlinks. Tick what goes; files move to the Trash and settings edits
@@ -178,8 +187,8 @@ Click the icon in the activity bar.
 |---|---|
 | View title bar | Open Overview · Filter… / Clear Filter · Group by Type / Group by Scope · Refresh · Collapse All · Clean Up Configuration… |
 | Icons on a type group | New… (`+`, where you can create) · What is this for? (book) · Open Folder |
-| Icons on other rows | Run (▶ skills, commands) · Attach Folder (`+` on Workspace) · Detach Folder (× on an attached folder) · Set Up Claude Code Here… (project without `.claude`) · Add Permission Rule… (`permissions` row) · Change Setting… (model, output style, permissions) · Test MCP Server · Enable / Disable (plugins, project MCP servers, skills, commands, CLAUDE.md files, rules) |
-| Right-click an item | Run in Claude Code · Open Source File · Reveal in File Explorer · Show in Overview · **Copy ›** Path, Invocation, @-Reference, claude mcp add Command · **Edit ›** Enable / Disable, Set Visibility…, Edit Description…, Change Setting…, Add Permission Rule…, Assign Keybinding…, Copy to…, Rename… · **Diagnose ›** Why Isn't This in Effect?, Compare with Overriding Item, Check Skill, Test MCP Server, Show Security Review · **Ask Claude Code ›** Copy Prompt…, Harden Security with Claude Code… · Move to Trash |
+| Icons on other rows | Insert in Active Session (➤ skills, commands, subagents) · Attach Folder (`+` on Workspace) · Detach Folder (× on an attached folder) · Set Up Claude Code Here… (project without `.claude`) · Add Permission Rule… (`permissions` row) · Change Setting… (model, output style, permissions) · Test MCP Server · Enable / Disable (plugins, project MCP servers, skills, commands, CLAUDE.md files, rules) |
+| Right-click an item | **Run ›** Run in Active Session, Insert in Active Session, Insert Subagent Mention in Active Session, Run in a New Terminal, Copy Invocation, Copy Prompt… (skills, commands, subagents) · Open Source File · Reveal in File Explorer · Show in Overview · **Copy ›** Path, Invocation, @-Reference, claude mcp add Command · **Edit ›** Enable / Disable, Set Visibility…, Edit Description…, Change Setting…, Add Permission Rule…, Assign Keybinding…, Copy to…, Rename… · **Diagnose ›** Why Isn't This in Effect?, Compare with Overriding Item, Check Skill, Test MCP Server, Show Security Review · **Ask Claude Code ›** Copy Prompt…, Harden Security with Claude Code… · Move to Trash |
 | Right-click a type group | What is this for? · Show Effective Settings (Settings, Policy) · Show Security Review (Settings, Policy, Hooks, MCP) · Show Hook Timeline (Hooks) · Show Context Budget (Memory, Skills, Rules) · Open Folder · New… · **Edit ›** Add Permission Rule… (Settings) · **Ask Claude Code ›** Setup Prompt…, Draft a Skill with Claude Code… (Skills) |
 | Right-click a greyed "none" row | What is this for? · New… · **Ask Claude Code ›** Setup Prompt… |
 | Right-click a scope heading, project or plugin | Set Up Claude Code Here… · **Ask Claude Code ›** Set Up with Claude Code… (projects), Personalise Claude Code… (User) · Export Report · Detach Folder |
@@ -242,7 +251,8 @@ Right-click a row for:
 ### Setting up with Claude Code
 
 Instead of a template, these hand Claude Code a precise request so it can look at the project
-first. Each can be copied or sent to a new Claude Code session in a terminal:
+first. Each can be copied, sent to the session you already have running, or sent to a new Claude
+Code session in a terminal:
 
 - **Set Up with Claude Code…** on a project: a `CLAUDE.md` with the build, test and architecture
   rules, a test-running skill, a formatter hook and permission rules, each shown before writing.
@@ -306,11 +316,21 @@ scopes. Anything else you want to see, you attach explicitly.
 - **Runs a process only on request.** `child_process` is used by one command, Test MCP Server,
   after a confirmation that shows the command line. It starts only stdio servers and stops them
   after they list their tools or after 20 seconds.
-- **Starts Claude Code only in a terminal you can see.** Run, keybindings made with Assign
-  Keybinding, Send to Claude Code on a snippet or prompt: each opens a new VS Code terminal and
-  types `claude '<prompt>'` into it. The first time, a confirmation shows the command line; you can
-  choose not to be asked again. A keybinding's `invocation` must be a slash command name, nothing
-  else.
+- **Starts Claude Code only in a terminal you can see.** Run in a New Terminal, keybindings made
+  with Assign Keybinding, Send to Claude Code on a snippet or prompt: each opens a new VS Code
+  terminal and types `claude '<prompt>'` into it. The first time, a confirmation shows the command
+  line; you can choose not to be asked again. A keybinding's `invocation` must be a slash command
+  name, nothing else.
+- **Types into an existing terminal only after you confirm which one.** Insert in Active Session,
+  Run in Active Session and the session option on a snippet or prompt write to a terminal that is
+  already open, because no API can tell the extension where Claude Code is running. The terminal is
+  picked in this order: one this extension started, the focused terminal if its name contains
+  "claude", any open terminal whose name does, otherwise you are asked; with none open it offers a
+  new one. The first time, a separate confirmation names the terminal, shows the exact text and says
+  that a terminal not running Claude Code receives it in its shell; you can choose not to be asked
+  again. What is typed is a slash command validated against the same pattern as everywhere else, or
+  a prompt built from display fields — never a command line, and nothing is read back from the
+  terminal.
 - **Reads transcripts only if you ask.** With `claudeExplorer.readTranscriptsForUsage` on, local
   transcripts under `~/.claude/projects/` are scanned for skill, command and subagent names and
   their dates. No message text is kept, and the counts stay in memory.

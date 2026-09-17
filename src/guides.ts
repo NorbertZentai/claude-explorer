@@ -2263,3 +2263,35 @@ export function renderGuide(kind: AssetKind): string {
 function cell(text: string): string {
   return text.replace(/\|/g, '\\|');
 }
+
+/**
+ * What a broken guide looks like: too few prompts, a template key with no field to fill it
+ * (or the reverse), or a link that is not https or is listed twice. Lives here rather than in
+ * the audit so `npm run audit -- --guide all` and the test suite check the same thing.
+ */
+export function guideIssues(g: Guide): string[] {
+  const issues: string[] = [];
+  if (g.prompts.length < 2) {
+    issues.push('fewer than 2 prompts');
+  }
+  for (const p of g.prompts) {
+    const used = templateKeys(p.template);
+    const fields = new Set(p.fields.map((f) => f.key));
+    const unknown = [...used].filter((k) => !fields.has(k) && !AUTO_PROMPT_KEYS.has(k));
+    const unused = [...fields].filter((k) => !used.has(k));
+    if (unknown.length) {
+      issues.push(`${p.id}: no field for ${unknown.join(', ')}`);
+    }
+    if (unused.length) {
+      issues.push(`${p.id}: unused field ${unused.join(', ')}`);
+    }
+  }
+  const urls = g.links.map((l) => l.url);
+  if (urls.some((u) => !u.startsWith('https://'))) {
+    issues.push('non-https link');
+  }
+  if (new Set(urls).size !== urls.length) {
+    issues.push('duplicate link');
+  }
+  return issues;
+}

@@ -30,6 +30,9 @@ jobs:
 
       - run: npm run typecheck
 
+      # A red suite must not ship.
+      - run: npm test
+
       # vscode:prepublish runs the production esbuild bundle.
       - name: Package
         run: npx --yes @vscode/vsce package -o extension.vsix

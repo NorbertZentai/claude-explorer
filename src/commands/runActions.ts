@@ -14,7 +14,8 @@ import { activeProjectRoot } from '../statusBar';
 import { AssetNode } from '../tree/nodes';
 import { ClaudeTreeProvider } from '../tree/provider';
 import { isEditingAllowed } from '../tree/style';
-import { claudeCommandLine, INVOCATION } from '../util/shell';
+import { claudeCommandLine, INVOCATION, oneLine } from '../util/shell';
+import { agentMentionText } from '../prompts';
 import { readText } from '../util/fs';
 import { settingsFileChoices } from './itemActions';
 import { confirm, reportErrors } from './ui';
@@ -25,10 +26,13 @@ import { confirm, reportErrors } from './ui';
  * why it is not in effect.
  *
  * Starting `claude` in a terminal is the one thing here that runs a program. It is always
- * visible (a terminal the user can see and stop) and confirmed the first time.
+ * visible (a terminal the user can see and stop) and confirmed the first time. Typing into a
+ * session that is already running is the other way text reaches Claude Code; both live here, so
+ * there is one file to read to know everything this extension writes to a terminal.
  */
 
 const KEY_RUN_CONFIRMED = 'claudeExplorer.runConfirmed';
+const KEY_SESSION_CONFIRMED = 'claudeExplorer.sessionWriteConfirmed';
 
 export function registerRunActions(context: vscode.ExtensionContext, provider: ClaudeTreeProvider): void {
   const command = (id: string, run: (...args: never[]) => unknown): void => {
@@ -37,7 +41,13 @@ export function registerRunActions(context: vscode.ExtensionContext, provider: C
     );
   };
 
+  // A terminal that closes is no longer a session to type into.
+  context.subscriptions.push(vscode.window.onDidCloseTerminal((terminal) => forgetTerminal(terminal)));
+
   command('claudeExplorer.runItem', (node?: AssetNode) => runItem(context, provider, node));
+  command('claudeExplorer.runInSession', (node?: AssetNode) => useInSession(context, provider, node, true));
+  command('claudeExplorer.insertInSession', (node?: AssetNode) => useInSession(context, provider, node, false));
+  command('claudeExplorer.insertMentionInSession', (node?: AssetNode) => insertMention(context, provider, node));
   command('claudeExplorer.runInvocation', (args?: { invocation?: unknown; args?: unknown; cwd?: unknown }) =>
     runFromKeybinding(context, provider, args),
   );
@@ -92,6 +102,142 @@ export async function sendToClaude(
   });
   terminal.show();
   terminal.sendText(line, true);
+  rememberTerminal(terminal);
+  return true;
+}
+
+/** Terminals this extension started, oldest first, so a later insert can find the session again. */
+const started: vscode.Terminal[] = [];
+/** The terminal last used as the Claude Code session, so repeated inserts do not keep asking. */
+let session: vscode.Terminal | undefined;
+
+function rememberTerminal(terminal: vscode.Terminal): void {
+  if (!started.includes(terminal)) {
+    started.push(terminal);
+  }
+  session = terminal;
+}
+
+function forgetTerminal(terminal: vscode.Terminal): void {
+  const index = started.indexOf(terminal);
+  if (index !== -1) {
+    started.splice(index, 1);
+  }
+  if (session === terminal) {
+    session = undefined;
+  }
+}
+
+/** Both the terminals we name `Claude: …` and a session the user started themselves. */
+function looksLikeClaude(terminal: vscode.Terminal): boolean {
+  return /claude/i.test(terminal.name);
+}
+
+type SessionTarget = { terminal: vscode.Terminal } | 'new' | 'cancelled';
+
+/**
+ * Which terminal is the running session. There is no API that says "Claude Code runs here", so
+ * this is a best guess, most reliable first, and the user is asked when it would be a guess.
+ */
+async function sessionTarget(): Promise<SessionTarget> {
+  const open = vscode.window.terminals;
+  if (session && open.includes(session)) {
+    return { terminal: session };
+  }
+  for (let i = started.length - 1; i >= 0; i -= 1) {
+    if (open.includes(started[i])) {
+      return { terminal: started[i] };
+    }
+  }
+  const active = vscode.window.activeTerminal;
+  if (active && looksLikeClaude(active)) {
+    return { terminal: active };
+  }
+  const named = open.filter(looksLikeClaude);
+  if (named.length > 0) {
+    return { terminal: named[named.length - 1] };
+  }
+  if (open.length === 0) {
+    return 'new';
+  }
+  const picked = await vscode.window.showQuickPick(
+    [
+      ...open.map((terminal) => ({ label: `$(terminal) ${terminal.name}`, terminal })),
+      { label: '$(add) Start a new Claude Code session', description: 'a new terminal running claude', terminal: undefined },
+    ],
+    { title: 'Which terminal is running Claude Code?', placeHolder: 'The text is typed into the terminal you pick' },
+  );
+  if (!picked) {
+    return 'cancelled';
+  }
+  return picked.terminal ? { terminal: picked.terminal } : 'new';
+}
+
+/**
+ * Type `text` at the prompt of the Claude Code session that is already running. With `submit`
+ * it presses Enter; without it the text is left on the prompt with the terminal focused, so the
+ * user can add arguments or context and send it themselves. Returns false when nothing was sent.
+ *
+ * This writes to whatever program owns that terminal, which no API can tell us, so the first
+ * time it names the terminal and shows the exact text.
+ */
+export async function sendToActiveSession(
+  context: vscode.ExtensionContext,
+  text: string,
+  options: { submit: boolean; title: string; cwd?: string },
+): Promise<boolean> {
+  const body = oneLine(text);
+  if (!body) {
+    return false;
+  }
+  // Not submitting means the user keeps typing, so leave a separator after the text.
+  const line = options.submit ? body : `${body} `;
+  const target = await sessionTarget();
+  if (target === 'cancelled') {
+    return false;
+  }
+  if (target === 'new') {
+    if (options.submit) {
+      return sendToClaude(context, body, options.cwd, options.title);
+    }
+    // Starting a session means `claude '<text>'`, which sends it at once -- the opposite of what
+    // an insert promises. So ask rather than quietly do the other thing.
+    const answer = await vscode.window.showWarningMessage(
+      'No running Claude Code session to type into. A new session would send the text straight away.',
+      'Start and Send',
+      'Copy the Text',
+    );
+    if (answer === 'Start and Send') {
+      return sendToClaude(context, body, options.cwd, options.title);
+    }
+    if (answer === 'Copy the Text') {
+      await vscode.env.clipboard.writeText(body);
+      void vscode.window.setStatusBarMessage('Copied. Paste it into Claude Code.', 4000);
+    }
+    return false;
+  }
+  const { terminal } = target;
+  if (!context.globalState.get<boolean>(KEY_SESSION_CONFIRMED, false)) {
+    const answer = await vscode.window.showWarningMessage(
+      `Type into the terminal “${terminal.name}”?`,
+      {
+        modal: true,
+        detail: `${options.submit ? 'This types the text and presses Enter' : 'This types the text and leaves the cursor after it'}:\n\n${line.length > 300 ? `${line.slice(0, 300)}…` : line}\n\nIt goes to whatever runs in that terminal. If Claude Code is not running there, the text reaches its shell instead.`,
+      },
+      'Type',
+      'Type and Don’t Ask Again',
+    );
+    if (!answer) {
+      return false;
+    }
+    if (answer !== 'Type') {
+      await context.globalState.update(KEY_SESSION_CONFIRMED, true);
+    }
+  }
+  rememberTerminal(terminal);
+  // Focus it, because without Enter the point is that the user carries on typing.
+  terminal.show(false);
+  terminal.sendText(line, options.submit);
   return true;
 }
 
@@ -121,6 +267,52 @@ async function runItem(context: vscode.ExtensionContext, provider: ClaudeTreePro
     args = typed.trim();
   }
   await sendToClaude(context, args ? `${asset.invocation} ${args}` : asset.invocation, cwdFor(provider, asset), asset.invocation);
+}
+
+/**
+ * The same skill or command, but into the session already running. Submitting asks for the
+ * arguments first, because after Enter there is no chance to add them; inserting does not, since
+ * leaving the prompt open for exactly that is the point.
+ */
+async function useInSession(
+  context: vscode.ExtensionContext,
+  provider: ClaudeTreeProvider,
+  node: AssetNode | undefined,
+  submit: boolean,
+): Promise<void> {
+  const asset = node?.asset;
+  if (!asset?.invocation || !INVOCATION.test(asset.invocation)) {
+    return;
+  }
+  const hint = rawFrontmatterLine(readText(asset.sourcePath) ?? '', 'argument-hint');
+  let text = asset.invocation;
+  if (submit && hint) {
+    const typed = await vscode.window.showInputBox({
+      title: `Run ${asset.invocation}`,
+      prompt: `Arguments: ${hint}`,
+      placeHolder: hint,
+    });
+    if (typed === undefined) {
+      return;
+    }
+    if (typed.trim()) {
+      text = `${asset.invocation} ${typed.trim()}`;
+    }
+  }
+  const sent = await sendToActiveSession(context, text, { submit, title: asset.invocation, cwd: cwdFor(provider, asset) });
+  if (sent && !submit && hint) {
+    // A terminal cannot hold selected placeholder text, so the hint goes where it does not get typed over.
+    void vscode.window.setStatusBarMessage(`${asset.invocation} takes: ${hint}`, 6000);
+  }
+}
+
+/** Subagents have no slash command, so what goes to the prompt is a sentence to finish. */
+async function insertMention(context: vscode.ExtensionContext, provider: ClaudeTreeProvider, node: AssetNode | undefined): Promise<void> {
+  const asset = node?.asset;
+  if (!asset || asset.placeholder || asset.kind !== 'agent') {
+    return;
+  }
+  await sendToActiveSession(context, agentMentionText(asset), { submit: false, title: asset.name, cwd: cwdFor(provider, asset) });
 }
 
 /**

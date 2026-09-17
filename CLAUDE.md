@@ -11,12 +11,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 npm run compile      # esbuild → dist/extension.js and dist/audit.js (dev, with sourcemaps)
 npm run watch        # same, rebuild on change
-npm run typecheck    # tsc --noEmit (also what `npm run lint` runs; there is no ESLint)
+npm run typecheck    # tsc --noEmit for src AND test (also what `npm run lint` runs; there is no ESLint)
+npm test             # esbuild test/**/*.test.ts -> out/test, then node --test
+npm run test:watch   # rebuild and re-run on change
 npm run audit -- <folder...> [--attach <folder...>] [--kind skill,hook] [--guide <kind>|all] [--lint] [--report <user|system|plugin|folder-suffix>] [--prompts]
 npx @vscode/vsce package -o <out>.vsix   # runs vscode:prepublish (production bundle) first
 ```
 
-- **No test runner.** Verification means `npm run audit`, a headless Node run of discovery and analysis on real folders. It exits non-zero if the redaction check finds anything secret-shaped in rendered output, or if `--guide all` finds a surface without a guide.
+- **Tests:** `node:test`, no test dependency. `test/**/*.test.ts` is bundled by `esbuild.test.mjs` into `out/test` and run with `node --test`. A `vscode` stub (`test/stubs/vscode.ts`) is aliased in by esbuild, which is what makes the tree and command layer testable without a VS Code host; it throws on any API it does not stub, so straying into unstubbed ground fails loudly. Fixtures come from `test/helpers/fixture.ts` (a temp `.claude` tree plus `CLAUDE_CONFIG_DIR`); compare paths against `fixture.dir`, never `os.tmpdir()`, because discovery stores `realPath(root)`.
+- **`npm run audit`** remains the headless run of discovery and analysis on real folders. It exits non-zero if the redaction check finds anything secret-shaped in rendered output, or if `--guide all` finds a surface without a guide. Both of those assertions now also exist as tests (`test/redactionSweep.test.ts`, `test/guides.test.ts`) so they fail in CI rather than only when someone runs the CLI.
+- **`test/contributes.test.ts`** keeps `package.json` and the source honest: every contributed command is registered and vice versa, every menu entry names a real command or submenu, and every `viewItem =~ /\bflag\b/` names a flag `contextFlags()` can actually produce. Add a flag there and to `ASSET_FLAGS` in the same commit.
 - **Isolated fixtures:** set `CLAUDE_CONFIG_DIR=<dir>/.claude` to point the user scope at a fixture.
 - **Pure modules** can also be exercised directly: bundle a small script with `npx esbuild script.ts --bundle --platform=node --main-fields=module,main` and run it with node.
 - **Debug:** the F5 "Run Extension" launch config (`.vscode/launch.json`).

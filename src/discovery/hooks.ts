@@ -1,6 +1,7 @@
 import * as os from 'os';
 import * as path from 'path';
 import { findLine, isFile, readJson, readText } from '../util/fs';
+import { redactCommandLine } from '../util/redact';
 import { Asset, Scope } from './types';
 
 /**
@@ -75,12 +76,17 @@ function flatten(
     for (const matcher of matchers) {
       for (const hook of Array.isArray(matcher?.hooks) ? matcher.hooks : []) {
         const command = hook.command ?? '';
+        // A hook command is a command line, and a command line can carry a credential:
+        // `--token=…` in a curl hook is ordinary. Everything shown goes through the
+        // redactor; only `hook.command` below stays raw, because the hook editor has to
+        // match the declaration byte for byte to find and rewrite it.
+        const shown = redactCommandLine(command.split(/\s+/));
         const script = scriptPath(command, vars);
         const detail: Record<string, string> = {
           Event: event,
           // A hook with no matcher runs for everything; saying so beats an empty row.
           Matcher: matcher.matcher ?? '(all)',
-          Command: command,
+          Command: shown,
         };
         if (hook.timeout !== undefined) {
           detail['Timeout'] = `${hook.timeout}s`;
@@ -92,7 +98,7 @@ function flatten(
         out.push({
           kind: 'hook',
           name: hook.statusMessage || `${event}${matcher.matcher ? ` · ${matcher.matcher}` : ''}`,
-          description: script ? path.basename(script) : command,
+          description: script ? path.basename(script) : shown,
           scope,
           // Open the script itself when it can be resolved -- that is what you want to
           // read. Fall back to the settings file that declares it.

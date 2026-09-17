@@ -20,7 +20,7 @@ import { ClaudeTreeProvider } from '../tree/provider';
 import { isEditingAllowed } from '../tree/style';
 import { readJson } from '../util/fs';
 import { redactCommandLine, redactText } from '../util/redact';
-import { sendToClaude } from './runActions';
+import { sendToActiveSession, sendToClaude } from './runActions';
 import { confirm, reportErrors } from './ui';
 
 /**
@@ -145,13 +145,14 @@ async function copyPrompt(context: vscode.ExtensionContext, provider: ClaudeTree
       ? estimateBudget(assets, root, provider.getMcpMeasurements()).rows.find((r) => r.sourcePath === asset.sourcePath)?.tokens
       : undefined;
   const prompts = promptsFor(asset, { ref: referenceFor(asset), winnerRef: winner && referenceFor(winner), tokens });
-  // Enter copies; the ▶ button on a row starts Claude Code with it instead.
+  // Enter copies; the buttons on a row send it to a session instead.
+  const toSession: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon('send'), tooltip: 'Send to the running Claude Code session' };
   const send: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon('play'), tooltip: 'Send to Claude Code in a new terminal' };
   const quickPick = vscode.window.createQuickPick<vscode.QuickPickItem & { prompt: (typeof prompts)[number] }>();
   quickPick.title = `Copy a prompt about ${asset.invocation ?? asset.name}`;
-  quickPick.placeholder = 'Enter copies the prompt; ▶ sends it to a new Claude Code session';
+  quickPick.placeholder = 'Enter copies the prompt; the buttons send it to a running or a new session';
   quickPick.matchOnDescription = true;
-  quickPick.items = prompts.map((p) => ({ label: p.label, description: p.detail, prompt: p, buttons: [send] }));
+  quickPick.items = prompts.map((p) => ({ label: p.label, description: p.detail, prompt: p, buttons: [toSession, send] }));
   await new Promise<void>((resolve) => {
     quickPick.onDidAccept(async () => {
       const picked = quickPick.selectedItems[0];
@@ -164,7 +165,11 @@ async function copyPrompt(context: vscode.ExtensionContext, provider: ClaudeTree
     quickPick.onDidTriggerItemButton(async (e) => {
       quickPick.hide();
       const cwd = asset.scope.kind === 'workspace' ? asset.scope.root : vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-      await sendToClaude(context, e.item.prompt.text, cwd, e.item.prompt.label);
+      if (e.button === toSession) {
+        await sendToActiveSession(context, e.item.prompt.text, { submit: true, title: e.item.prompt.label, cwd });
+      } else {
+        await sendToClaude(context, e.item.prompt.text, cwd, e.item.prompt.label);
+      }
     });
     quickPick.onDidHide(() => {
       quickPick.dispose();

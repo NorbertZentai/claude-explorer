@@ -20,9 +20,10 @@ import { effectiveSettings } from './analysis/effectiveSettings';
 import { hookTimeline } from './analysis/hookTimeline';
 import { renderReport } from './analysis/report';
 import { lintSkill } from './analysis/skillLint';
-import { promptsFor } from './prompts';
+import { agentMentionText, promptsFor } from './prompts';
 import { collect } from './discovery';
-import { AUTO_PROMPT_KEYS, Guide, GUIDES, promptPreview, renderGuide, templateKeys } from './guides';
+import { SECRET_SHAPED } from './util/redact';
+import { GUIDES, guideIssues, promptPreview, renderGuide } from './guides';
 import { Asset, ASSET_ORDER, ASSET_LABELS } from './discovery/types';
 
 // `node dist/audit.js <open folder...> --attach <folder...>`
@@ -242,6 +243,11 @@ if (argv.includes('--prompts')) {
       settingsRendered.push(prompt.text);
       count++;
     }
+    // What Insert Subagent Mention in Active Session types; rendered output, so it is checked too.
+    if (asset.kind === 'agent') {
+      settingsRendered.push(agentMentionText(asset));
+      count++;
+    }
   }
   for (const g of Object.values(GUIDES)) {
     for (const p of g.prompts) {
@@ -261,34 +267,6 @@ if (argv.includes('--cleanup')) {
     settingsRendered.push(line);
     console.log(line);
   }
-}
-
-/** What `--guide all` treats as a broken guide. */
-function guideIssues(g: Guide): string[] {
-  const issues: string[] = [];
-  if (g.prompts.length < 2) {
-    issues.push('fewer than 2 prompts');
-  }
-  for (const p of g.prompts) {
-    const used = templateKeys(p.template);
-    const fields = new Set(p.fields.map((f) => f.key));
-    const unknown = [...used].filter((k) => !fields.has(k) && !AUTO_PROMPT_KEYS.has(k));
-    const unused = [...fields].filter((k) => !used.has(k));
-    if (unknown.length) {
-      issues.push(`${p.id}: no field for ${unknown.join(', ')}`);
-    }
-    if (unused.length) {
-      issues.push(`${p.id}: unused field ${unused.join(', ')}`);
-    }
-  }
-  const urls = g.links.map((l) => l.url);
-  if (urls.some((u) => !u.startsWith('https://'))) {
-    issues.push('non-https link');
-  }
-  if (new Set(urls).size !== urls.length) {
-    issues.push('duplicate link');
-  }
-  return issues;
 }
 
 // `--recent` lists what changed in the last 14 days; `--deps` the hover dependencies.
@@ -318,7 +296,7 @@ for (const p of problems) {
 
 // The point of util/redact.ts is that no value can reach an Asset. Prove it here rather
 // than trusting the call sites: fail loudly if any rendered string looks like a secret.
-const SECRET_SHAPED = /(?:sk|pk|ghp|gho|ocr_live|xox[abps])[-_][A-Za-z0-9_-]{12,}|[A-Za-z0-9_-]*(?:password|passwd|secret|token)[A-Za-z0-9_-]*=[^•\s)]/i;
+// The spec lives beside the redactors it describes.
 const leaked = assets.filter((a) =>
   SECRET_SHAPED.test([a.name, a.description ?? '', ...Object.values(a.detail ?? {})].join(' ')),
 );

@@ -11,6 +11,18 @@
  * disclosure, and a length is still a hint.
  */
 
+/**
+ * What a leak looks like: a token-shaped word, or a credential-named key with a value after
+ * it. Lives here, beside the redactors it is the spec for, so the audit and the tests cannot
+ * drift apart.
+ *
+ * The negated class exempts the two things this codebase writes in place of a value: the
+ * mask `••••••`, and the `<value>` placeholder `buildAddCommand` leaves for the user to fill
+ * in. A `)` ends a permission rule such as `Bash(TOKEN=…)`.
+ */
+export const SECRET_SHAPED =
+  /(?:sk|pk|ghp|gho|ocr_live|xox[abps])[-_][A-Za-z0-9_-]{12,}|[A-Za-z0-9_-]*(?:password|passwd|secret|token)[A-Za-z0-9_-]*=[^•<\s)]/i;
+
 /** Names of the variables an env block defines, sorted. Never their values. */
 export function envVarNames(env: unknown): string[] {
   if (!env || typeof env !== 'object' || Array.isArray(env)) {

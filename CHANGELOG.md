@@ -10,6 +10,16 @@ Initial version.
 
 ### Added
 
+- Test suite (`npm test`): `node:test` with no new dependency, TypeScript bundled by esbuild,
+  and a hand-written `vscode` stub so the tree and command layers are covered without a VS Code
+  host. Covers the redaction invariant, JSON minimal edits, the permission evaluator, override
+  precedence, globbing, shell quoting, the `contextValue` flags every menu depends on, and the
+  Run-in-session actions. CI (`.github/workflows/ci.yml`) runs it on Linux and Windows for every
+  push and pull request, and a red suite now blocks publishing.
+- The two checks `npm run audit` made only on a developer's machine are now also tests: the
+  secret-shaped sweep runs against a fixture with planted credentials, and every surface's guide
+  is validated. A third test keeps `package.json` and the source in step — commands, menus,
+  submenus and the `contextValue` flags the `when` clauses match.
 - Read-only sidebar listing Claude Code configuration across the System, User, Plugins and
   Workspace scopes: policy, settings, skills, commands, subagents, rules, hooks, MCP and LSP
   servers, output styles, themes, workflows, keybindings, plugins, plans and memory.
@@ -54,8 +64,19 @@ Initial version.
 - Status bar items for the active project: context estimate with colour thresholds
   (`claudeExplorer.budgetWarnTokens`), problems, configured MCP servers, and a non-default
   permission mode, model or output style (`claudeExplorer.statusBar`).
-- Run in Claude Code (▶) on skills and commands, which starts `claude "/name"` in a new terminal
+- Run in Claude Code on skills and commands, which starts `claude "/name"` in a new terminal
   after a confirmation, and Assign Keybinding… to bind it in `keybindings.json`.
+- Run ▸ group on skill, command and subagent rows, gathering Run in Active Session, Insert in
+  Active Session, Insert Subagent Mention in Active Session, Run in a New Terminal, Copy Invocation
+  and Copy Prompt…. The inline icon on those rows is now Insert in Active Session (➤); Run in a New
+  Terminal moved into the group.
+- Insert in Active Session types a slash command at the prompt of the Claude Code session already
+  running and leaves the cursor after it, so arguments or extra context can be added before Enter.
+  The terminal is guessed (one this extension started, else one named `claude…`, else you pick) and
+  the first insert confirms which terminal it is and what will be typed. Subagents, which have no
+  slash command, get `Use the <name> subagent to ` instead.
+- Setup prompts, item prompts and snippets can also go to the session already running, next to the
+  existing new-terminal and copy options. On a snippet row the inline ➤ inserts without submitting.
 - Edit Description… on skills, commands and subagents, and Change Setting… for `model`,
   `outputStyle`, `permissions.defaultMode` and `cleanupPeriodDays`.
 - Enable/Disable for skills and commands (`skillOverrides`) and for `CLAUDE.md` files and rules
@@ -90,6 +111,9 @@ Initial version.
 
 ### Fixed
 
+- A hook command was shown in the tree row and its tooltip exactly as written, so a credential
+  passed inline (`--token=…`) appeared on screen. It now goes through the same redactor as every
+  other command line; the Overview's hook timeline already did this.
 - A credential assigned inside a permission rule, such as `Bash(PGPASSWORD=… psql:*)`, was shown
   unmasked in effective settings; the redaction check now also catches `password=`, `secret=` and
   `token=` assignments.
