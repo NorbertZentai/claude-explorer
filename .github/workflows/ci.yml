@@ -1,0 +1,49 @@
+name: CI
+
+# The tests and the audit on every push and pull request. Publishing is a separate
+# workflow; this one is what should gate a merge.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # Windows is not decoration: scopes.ts case-folds paths only on win32, realPath() exists
+    # because of 8.3 short names, and system.ts branches on process.platform. Those paths
+    # have never run on the platform they were written for.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run compile
+      # Exits non-zero if a surface has no guide, or if anything rendered looks
+      # secret-shaped. Until now it never ran outside a developer's machine.
+      - run: npm run audit -- . --prompts --guide all
